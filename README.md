@@ -210,6 +210,71 @@ defmodule ShoppingCart.CheckoutSpex do
 end
 ```
 
+## 📚 Complete Documentation
+
+Choose your path based on what you need:
+
+### 🎯 [Getting Started Guide](GETTING_STARTED.md)
+**Start here if you're new to Spex**
+- What is Spex and why use it?
+- Installation and setup from scratch
+- Your first spex with step-by-step guidance
+- Understanding Given/When/Then concepts
+- All command line options and interactive modes
+
+### 📖 [How-To Guide](HOW_TO_GUIDE.md)
+**Problem-solving for specific tasks**
+- How do I set up Spex for my project?
+- How do I debug failing tests?
+- How do I write maintainable spex?
+- How do I test complex user workflows?
+- How do I integrate with CI/development workflow?
+
+### 🔧 [Troubleshooting Guide](TROUBLESHOOTING.md)
+**Solutions for common problems**
+- Application startup issues and port conflicts
+- Screenshot and visual testing problems
+- Manual mode and interactive debugging issues
+- Performance and timeout problems
+- Step-by-step debugging strategies
+
+### 📋 [Technical Reference](TECHNICAL_REFERENCE.md)
+**Complete API documentation**
+- Full API reference for all modules
+- Configuration options and environment setup
+- Adapter architecture and extension points
+- Advanced patterns and custom adapters
+
+## 🎮 Interactive Features
+
+Spex now includes powerful interactive features for development and debugging:
+
+### Speed Control
+```bash
+mix spex --speed fast      # 100ms delays - for CI
+mix spex --speed normal    # 500ms delays - default  
+mix spex --speed slow      # 2000ms delays - for observation
+mix spex --speed manual    # Interactive step-by-step control
+```
+
+### Manual Mode - Complete Control
+```bash
+mix spex --manual --verbose
+```
+
+**Manual mode gives you:**
+- 🎯 Preview of each action before execution
+- ⏸️ Pause and continue at your own pace
+- 📸 Take screenshots anytime during execution
+- 🔍 Inspect app state and viewport information
+- ❌ Quit immediately when needed
+
+**Perfect for:**
+- Debugging failing tests step-by-step
+- Understanding how your app responds to actions
+- Creating visual documentation of workflows
+- Training and demonstration purposes
+
 ## Architecture
 
 ### Core Modules
@@ -222,10 +287,18 @@ end
 
 - **`Spex.Adapters.Default`** - Basic adapter for standard testing
 - **`Spex.Adapters.ScenicMCP`** - Adapter for Scenic GUI applications with MCP integration
+  - Real-time GUI interaction
+  - Screenshot capture and visual evidence
+  - Interactive manual control
+  - Speed-controlled execution
 
 ### Mix Integration
 
-- **`Mix.Tasks.Spex`** - Mix task for running spex from command line
+- **`Mix.Tasks.Spex`** - Enhanced Mix task with lifecycle management
+  - Automatic application startup and cleanup
+  - Port management and conflict resolution
+  - Interactive mode support
+  - Configurable execution speeds
 
 ## Philosophy
 
