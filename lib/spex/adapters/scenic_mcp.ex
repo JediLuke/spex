@@ -119,13 +119,6 @@ defmodule Spex.Adapters.ScenicMCP do
   Sends text input to the Scenic application.
   """
   def send_text(text) when is_binary(text) do
-    if Application.get_env(:spex, :manual_mode, false) do
-      IO.puts("    🎯 NEXT ACTION: Send text '#{text}'")
-    end
-    
-    # Apply speed delay for visual feedback (includes manual prompts)
-    apply_speed_delay()
-    
     IO.puts("    🤖 MCP: Sending text '#{text}'")
     # In production: integrate with actual MCP tools
     # Example: System.cmd("scenic_mcp_client", ["send_text", text])
@@ -138,13 +131,6 @@ defmodule Spex.Adapters.ScenicMCP do
   """
   def send_key(key, modifiers \\ []) when is_binary(key) and is_list(modifiers) do
     mod_str = if modifiers == [], do: "", else: " + #{Enum.join(modifiers, "+")}"
-    
-    if Application.get_env(:spex, :manual_mode, false) do
-      IO.puts("    🎯 NEXT ACTION: Send key '#{key}'#{mod_str}")
-    end
-    
-    # Apply speed delay for visual feedback (includes manual prompts)
-    apply_speed_delay()
     
     IO.puts("    🤖 MCP: Sending key '#{key}'#{mod_str}")
     # In production: integrate with actual MCP tools
@@ -159,13 +145,6 @@ defmodule Spex.Adapters.ScenicMCP do
     screenshot_dir = Application.get_env(:spex, :screenshot_dir, ".")
     actual_filename = filename || "spex_screenshot_#{:os.system_time(:millisecond)}"
     full_path = Path.join(screenshot_dir, "#{actual_filename}.png")
-    
-    if Application.get_env(:spex, :manual_mode, false) do
-      IO.puts("    🎯 NEXT ACTION: Take screenshot '#{actual_filename}.png'")
-    end
-    
-    # Apply speed delay for visual feedback (includes manual prompts)
-    apply_speed_delay()
     
     # Ensure screenshot directory exists
     File.mkdir_p!(screenshot_dir)
@@ -192,59 +171,6 @@ defmodule Spex.Adapters.ScenicMCP do
     }}
   end
 
-  @doc """
-  Applies a delay based on the configured playback speed.
-  
-  This allows users to observe the GUI interactions in real-time at different speeds:
-  - slow: 2000ms delay between actions
-  - normal: 500ms delay between actions  
-  - fast: 100ms delay between actions
-  - manual: interactive prompts for each action
-  """
-  defp apply_speed_delay do
-    if Application.get_env(:spex, :manual_mode, false) do
-      prompt_manual_action()
-    else
-      delay_ms = Application.get_env(:spex, :step_delay, 500)
-      
-      if delay_ms > 0 do
-        Process.sleep(delay_ms)
-      end
-    end
-  end
-
-  defp prompt_manual_action do
-    IO.puts("")
-    response = IO.gets("    🎮 [ENTER] Continue | [s] Screenshot | [i] Inspect | [q] Quit: ")
-    
-    # Handle both string responses and :eof (which happens in some test environments)
-    trimmed_response = case response do
-      :eof -> ""
-      response when is_binary(response) -> String.trim(response)
-      _ -> ""
-    end
-    
-    case trimmed_response do
-      "s" ->
-        timestamp = :os.system_time(:millisecond)
-        {:ok, screenshot} = take_screenshot("manual_step_#{timestamp}")
-        IO.puts("    📸 Screenshot saved: #{screenshot.filename}")
-        prompt_manual_action()
-        
-      "i" ->
-        {:ok, viewport} = inspect_viewport()
-        IO.puts("    🔍 Viewport: #{inspect(viewport)}")
-        prompt_manual_action()
-        
-      "q" ->
-        IO.puts("    ❌ Quitting manual mode...")
-        System.halt(0)
-        
-      _ ->
-        IO.puts("    ▶️  Continuing...")
-        :ok
-    end
-  end
 
   # Convenience aliases for backward compatibility and ease of use
   defdelegate send_text(text), to: __MODULE__, as: :send_text

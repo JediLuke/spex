@@ -308,20 +308,47 @@ mix spex --pattern "**/smoke_*" --speed fast --verbose
 
 ### Manual Mode - Complete Control
 
-Manual mode gives you **complete step-by-step control**:
+Manual mode gives you **step-by-step control between DSL blocks**:
 
 ```bash
 mix spex --manual
 ```
 
+**Important:** Manual mode pauses **between `given_`, `when_`, `then_`, and `and_` blocks**, not between individual lines of code within each block.
+
 **What you get:**
 1. **Application boots** and waits for your input
-2. **Before each action**, you see what will happen next
+2. **Before each DSL block**, you see what will happen next
 3. **Interactive prompt** with options:
-   - `[ENTER]` - Continue to next step
+   - `[ENTER]` - Continue to next block
    - `[s] + ENTER` - Take manual screenshot
    - `[i] + ENTER` - Inspect viewport
    - `[q] + ENTER` - Quit
+
+**For fine-grained control over individual actions**, break your steps into smaller blocks:
+```elixir
+# Instead of one large block:
+when_ "user interacts with form" do
+  send_text("username")    # No pause here
+  send_key("tab")          # No pause here  
+  send_text("password")    # No pause here
+end
+
+# Use smaller blocks for manual control:
+when_ "user enters username" do
+  send_text("username")
+end
+# Manual pause here
+
+and_ "user moves to password field" do
+  send_key("tab")
+end  
+# Manual pause here
+
+and_ "user enters password" do
+  send_text("password")
+end
+```
 
 **Example manual session:**
 ```

@@ -67,10 +67,13 @@ defmodule Spex.DSL do
   @doc """
   Defines the preconditions for a test scenario.
   """
-  defmacro given(description, do: block) do
+  defmacro given_(description, do: block) do
     quote do
       Spex.Reporter.step("Given", unquote(description))
-      unquote(block)
+      
+      Spex.StepExecutor.execute_step("Given", unquote(description), fn ->
+        unquote(block)
+      end)
     end
   end
 
@@ -80,7 +83,10 @@ defmodule Spex.DSL do
   defmacro when_(description, do: block) do
     quote do
       Spex.Reporter.step("When", unquote(description))
-      unquote(block)
+      
+      Spex.StepExecutor.execute_step("When", unquote(description), fn ->
+        unquote(block)
+      end)
     end
   end
 
@@ -90,7 +96,10 @@ defmodule Spex.DSL do
   defmacro then_(description, do: block) do
     quote do
       Spex.Reporter.step("Then", unquote(description))
-      unquote(block)
+      
+      Spex.StepExecutor.execute_step("Then", unquote(description), fn ->
+        unquote(block)
+      end)
     end
   end
 
@@ -100,7 +109,10 @@ defmodule Spex.DSL do
   defmacro and_(description, do: block) do
     quote do
       Spex.Reporter.step("And", unquote(description))
-      unquote(block)
+      
+      Spex.StepExecutor.execute_step("And", unquote(description), fn ->
+        unquote(block)
+      end)
     end
   end
 end

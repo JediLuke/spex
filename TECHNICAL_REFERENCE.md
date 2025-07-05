@@ -22,7 +22,7 @@ defmodule Calculator.BasicSpex do
   
   spex "calculator can add numbers" do
     scenario "adding two positive numbers" do
-      given "two numbers" do
+      given_ "two numbers" do
         a = 5
         b = 3
       end
@@ -55,7 +55,7 @@ Step-by-step guide for testing Scenic applications...
 ```elixir
 spex "file save functionality" do
   scenario "save to new file" do
-    given "unsaved content" do
+    given_ "unsaved content" do
       ScenicMCP.send_text("My document content")
     end
     
@@ -178,10 +178,65 @@ end
   - **Parameters:** `name` (string), `opts` (keyword list)
   - **Options:** `:description`, `:tags`, `:context`
 - `scenario/2` - Define a test scenario within a spex
-- `given/2` - Set up preconditions  
+- `given_/2` - Set up preconditions  
 - `when_/2` - Define the action being tested
 - `then_/2` - Define expected outcomes
-- `and_/2` - Additional steps
+- `and_/2` - Additional context or cleanup steps
+
+##### Manual Mode and Step Control
+
+**Important:** Manual mode pauses **between DSL blocks**, not between individual lines of code within each block.
+
+**Execution Flow:**
+```elixir
+scenario "example flow" do
+  given_ "setup" do
+    # All code here executes without pause
+    line1()
+    line2()
+    line3()
+  end
+  # PAUSE HAPPENS HERE in manual mode
+  
+  when_ "action" do
+    # All code here executes without pause
+    action1()
+    action2()
+  end
+  # PAUSE HAPPENS HERE in manual mode
+  
+  then_ "verification" do
+    # All code here executes without pause
+    assert1()
+    assert2()
+  end
+end
+```
+
+**For Fine-Grained Control:** Break actions into smaller DSL blocks:
+```elixir
+# Instead of:
+when_ "complex user interaction" do
+  send_text("Hello")      # No pause
+  send_key("backspace")   # No pause  
+  send_text(" World")     # No pause
+end
+
+# Use multiple blocks:
+when_ "user types Hello" do
+  send_text("Hello")
+end
+# Pause here
+
+and_ "user corrects text" do
+  send_key("backspace")
+end
+# Pause here
+
+and_ "user completes with World" do
+  send_text(" World")
+end
+```
 
 ##### `Spex.Reporter`
 **Output formatting and progress tracking**

@@ -263,11 +263,35 @@ mix spex --manual --verbose
 ```
 
 **Manual mode gives you:**
-- 🎯 Preview of each action before execution
-- ⏸️ Pause and continue at your own pace
+- 🎯 Preview of each step block before execution
+- ⏸️ Pause and continue at your own pace between `given_`, `when_`, `then_`, and `and_` blocks
 - 📸 Take screenshots anytime during execution
 - 🔍 Inspect app state and viewport information
 - ❌ Quit immediately when needed
+
+**Important: Manual mode pauses between DSL blocks, not individual code lines.** For fine-grained control over individual actions (like keystrokes), break your actions into smaller steps:
+
+```elixir
+# Instead of one large block:
+when_ "user types and edits text" do
+  ScenicMCP.send_text("Hello")     # No pause here
+  ScenicMCP.send_key("backspace")  # No pause here  
+  ScenicMCP.send_text(" World")    # No pause here
+end
+
+# Break into smaller steps for better manual control:
+when_ "user types Hello" do
+  ScenicMCP.send_text("Hello")
+end
+
+and_ "user corrects the text" do
+  ScenicMCP.send_key("backspace")  
+end
+
+and_ "user completes with World" do
+  ScenicMCP.send_text(" World")
+end
+```
 
 **Perfect for:**
 - Debugging failing tests step-by-step
@@ -280,7 +304,7 @@ mix spex --manual --verbose
 ### Core Modules
 
 - **`Spex`** - Main module providing the `use` macro and setup
-- **`Spex.DSL`** - Domain-specific language macros (spex, scenario, given, when_, then_)
+- **`Spex.DSL`** - Domain-specific language macros (spex, scenario, given_, when_, then_, and_)
 - **`Spex.Reporter`** - Handles output formatting and progress reporting
 
 ### Adapter System
