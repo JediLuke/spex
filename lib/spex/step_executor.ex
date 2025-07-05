@@ -119,19 +119,31 @@ defmodule Spex.StepExecutor do
   Takes a screenshot if the current adapter supports it.
   """
   defp take_screenshot_if_available do
-    adapter = Application.get_env(:spex, :adapter, Spex.Adapters.Default)
+    adapter = Application.get_env(:spex, :adapter)
+    config = Application.get_env(:spex, :config, %{})
     
-    if function_exported?(adapter, :take_screenshot, 1) do
+    if function_exported?(adapter, :take_screenshot, 2) do
       timestamp = :os.system_time(:millisecond)
       
-      case adapter.take_screenshot("manual_step_#{timestamp}") do
+      case adapter.take_screenshot("manual_step_#{timestamp}", config) do
         {:ok, result} ->
           IO.puts("  📸 Screenshot saved: #{result.filename}")
         {:error, reason} ->
           IO.puts("  ⚠️  Screenshot failed: #{reason}")
       end
     else
-      IO.puts("  ⚠️  Screenshot not supported by current adapter")
+      if function_exported?(adapter, :take_screenshot, 1) do
+        timestamp = :os.system_time(:millisecond)
+        
+        case adapter.take_screenshot("manual_step_#{timestamp}") do
+          {:ok, result} ->
+            IO.puts("  📸 Screenshot saved: #{result.filename}")
+          {:error, reason} ->
+            IO.puts("  ⚠️  Screenshot failed: #{reason}")
+        end
+      else
+        IO.puts("  ⚠️  Screenshot not supported by current adapter")
+      end
     end
   end
 
@@ -139,7 +151,7 @@ defmodule Spex.StepExecutor do
   Inspects the viewport if the current adapter supports it.
   """
   defp inspect_viewport_if_available do
-    adapter = Application.get_env(:spex, :adapter, Spex.Adapters.Default)
+    adapter = Application.get_env(:spex, :adapter)
     
     if function_exported?(adapter, :inspect_viewport, 0) do
       case adapter.inspect_viewport() do

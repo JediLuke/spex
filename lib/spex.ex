@@ -56,13 +56,37 @@ defmodule Spex do
   end
 
   @doc """
-  Sets up the spex environment.
+  Sets up the spex environment with configuration.
   """
   def setup(opts \\ []) do
-    adapter = opts[:adapter] || Application.get_env(:spex, :adapter, Spex.Adapters.Default)
+    adapter = opts[:adapter] || raise """
+    No adapter specified! You must explicitly choose an adapter when using Spex.
     
-    if function_exported?(adapter, :setup, 0) do
-      adapter.setup()
+    Example:
+        use Spex, adapter: Spex.Adapters.ScenicMCP
+    
+    Available adapters:
+    - Spex.Adapters.ScenicMCP - For Scenic GUI applications
+    """
+    
+    # Get adapter defaults and merge with user options
+    config = if function_exported?(adapter, :defaults, 0) do
+      Map.merge(adapter.defaults(), Map.new(opts))
+    else
+      Map.new(opts)
+    end
+    
+    # Set up global configuration for StepExecutor and other components
+    Application.put_env(:spex, :adapter, adapter)
+    Application.put_env(:spex, :config, config)
+    
+    # Initialize the adapter with merged configuration
+    if function_exported?(adapter, :setup, 1) do
+      adapter.setup(config)
+    else
+      if function_exported?(adapter, :setup, 0) do
+        adapter.setup()
+      end
     end
     
     :ok

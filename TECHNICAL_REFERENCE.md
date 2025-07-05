@@ -251,13 +251,13 @@ end
 
 #### **Adapters**
 
-##### `Spex.Adapters.Default`
-**Basic adapter for standard testing**
+##### Adapter Architecture
 
-- `setup/0` - No-op setup
-- `take_screenshot/1` - Creates placeholder screenshot files
-- `app_running?/1` - Always returns true
-- `wait_for_app/2` - No-op wait
+**You must explicitly specify an adapter** - there is no default adapter. This ensures clear intent about your testing environment.
+
+**Required Adapter Functions:**
+- `defaults/0` - Returns default configuration map
+- `setup/1` - Initialize adapter with configuration
 
 ##### `Spex.Adapters.ScenicMCP`  
 **Scenic GUI testing adapter**

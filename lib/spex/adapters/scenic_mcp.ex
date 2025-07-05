@@ -42,12 +42,23 @@ defmodule Spex.Adapters.ScenicMCP do
   """
 
   @default_port 9999
+  @default_screenshot_dir "test/spex/screenshots/tmp"
 
   @doc """
-  Sets up the ScenicMCP adapter environment.
+  Returns default configuration for ScenicMCP adapter.
   """
-  def setup do
-    port = Application.get_env(:spex, :port, @default_port)
+  def defaults do
+    %{
+      port: @default_port,
+      screenshot_dir: @default_screenshot_dir
+    }
+  end
+
+  @doc """
+  Sets up the ScenicMCP adapter environment with given configuration.
+  """
+  def setup(config \\ %{}) do
+    port = Map.get(config, :port, @default_port)
     
     unless app_running?(port) do
       IO.puts("⚠️  Warning: No Scenic MCP server detected on port #{port}")
@@ -141,8 +152,8 @@ defmodule Spex.Adapters.ScenicMCP do
   @doc """
   Captures a screenshot of the Scenic application.
   """
-  def take_screenshot(filename \\ nil) do
-    screenshot_dir = Application.get_env(:spex, :screenshot_dir, ".")
+  def take_screenshot(filename \\ nil, config \\ %{}) do
+    screenshot_dir = Map.get(config, :screenshot_dir, @default_screenshot_dir)
     actual_filename = filename || "spex_screenshot_#{:os.system_time(:millisecond)}"
     full_path = Path.join(screenshot_dir, "#{actual_filename}.png")
     
@@ -175,6 +186,5 @@ defmodule Spex.Adapters.ScenicMCP do
   # Convenience aliases for backward compatibility and ease of use
   defdelegate send_text(text), to: __MODULE__, as: :send_text
   defdelegate send_key(key, modifiers), to: __MODULE__, as: :send_key
-  defdelegate take_screenshot(filename), to: __MODULE__, as: :take_screenshot
   defdelegate inspect_viewport(), to: __MODULE__, as: :inspect_viewport
 end

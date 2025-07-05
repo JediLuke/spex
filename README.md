@@ -36,14 +36,14 @@ Create a file `test/spex/user_registration_spex.exs`:
 
 ```elixir
 defmodule MyApp.UserRegistrationSpex do
-  use Spex
+  use Spex, adapter: YourApp.TestAdapter
 
   spex "user can register successfully",
     description: "Validates the user registration flow",
     tags: [:user_management, :registration] do
     
     scenario "with valid data" do
-      given "valid user registration data" do
+      given_ "valid user registration data" do
         user_data = %{
           email: "test@example.com",
           password: "secure_password123",
@@ -63,7 +63,7 @@ defmodule MyApp.UserRegistrationSpex do
     end
 
     scenario "with invalid email" do
-      given "invalid email format" do
+      given_ "invalid email format" do
         invalid_data = %{email: "not-an-email", password: "secure123"}
         refute valid_email?(invalid_data.email)
       end
@@ -126,18 +126,15 @@ For Scenic applications, use the ScenicMCP adapter:
 
 ```elixir
 defmodule MyGUI.LoginSpex do
-  use Spex
-
-  # Configure the ScenicMCP adapter
-  setup_all do
-    Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
-    Application.put_env(:spex, :port, 9999)
-    :ok
-  end
+  # Configure for Scenic GUI testing with custom screenshot directory
+  use Spex,
+    adapter: Spex.Adapters.ScenicMCP,
+    port: 9999,
+    screenshot_dir: "test/gui_screenshots"
 
   spex "user can login via GUI" do
     scenario "successful login flow" do
-      given "the login screen is displayed" do
+      given_ "the login screen is displayed" do
         alias Spex.Adapters.ScenicMCP
         assert ScenicMCP.wait_for_app(9999)
         {:ok, _} = ScenicMCP.take_screenshot("login_screen")
@@ -160,6 +157,42 @@ end
 ```
 
 ## Configuration
+
+### Adapter Configuration
+
+Spex uses a clean configuration approach - just specify your adapter and options in the `use` macro:
+
+```elixir
+# For standard Elixir testing - you must specify an adapter
+defmodule MyLib.ProcessorSpex do
+  use Spex, adapter: YourApp.CustomAdapter  # You must specify an adapter
+end
+
+# Scenic MCP adapter - for GUI testing
+defmodule MyGUI.EditorSpex do
+  use Spex,
+    adapter: Spex.Adapters.ScenicMCP,    # Defaults: port 9999
+    screenshot_dir: "test/my_screenshots" # Override default: test/spex/screenshots/tmp
+end
+
+# Scenic MCP with custom port
+defmodule MyOtherGUI.Spex do
+  use Spex,
+    adapter: Spex.Adapters.ScenicMCP,
+    port: 8888,                          # Override default port
+    screenshot_dir: "test/integration"   # Custom screenshot location
+end
+```
+
+### Adapter Defaults
+
+Each adapter provides sensible defaults that can be overridden:
+
+- **ScenicMCP Adapter**: `port: 9999`, `screenshot_dir: "test/spex/screenshots/tmp"`
+
+**Note:** You must explicitly specify an adapter - there is no "default" adapter. This ensures clear intent about what testing environment you're using.
+
+## Advanced Configuration
 
 Configure spex in your `config/config.exs`:
 
