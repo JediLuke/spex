@@ -181,35 +181,174 @@ end
 
 **Problem:** Need to reset state between scenarios or clean up after tests.
 
-**Solution:**
+**IMPORTANT: Understanding setup vs setup_all timing**
+
+- **setup_all**: Runs **ONCE** when the test module loads, **before ALL spex** in the file
+- **setup**: Runs **before EACH individual spex** (each `spex "..."` block), **NOT before scenarios or Given/When/Then steps**
+
+**Timeline Example:**
+```elixir
+defmodule MyApp.ExampleSpex do
+  use Spex
+  
+  setup_all do
+    IO.puts("🚀 setup_all: Runs ONCE when module loads")
+    Application.ensure_all_started(:my_app)
+    {:ok, %{shared_data: "available to all spex"}}
+  end
+  
+  setup do
+    IO.puts("🔧 setup: Runs before EACH spex block")
+    {:ok, %{fresh_data: "reset for each spex"}}
+  end
+  
+  spex "first test" do              # setup runs here!
+    scenario "first scenario" do     # NO setup here
+      # context has both shared_data and fresh_data
+    end
+    scenario "second scenario" do    # NO setup here
+      # Same context as first scenario
+    end
+  end
+  
+  spex "second test" do             # setup runs again here!
+    scenario "third scenario" do     # NO setup here  
+      # fresh_data is reset, shared_data is the same
+    end
+  end
+end
+```
+
+**Output Timeline:**
+```
+🚀 setup_all: Runs ONCE when module loads
+🔧 setup: Runs before EACH spex block
+  [first test scenarios run - all scenarios share same context]
+🔧 setup: Runs before EACH spex block
+  [second test scenarios run - fresh context]
+```
+
+**Practical Solution:**
 
 ```elixir
 defmodule MyApp.FeatureSpex do
   use Spex
   
-  # Runs once before all scenarios
+  # Runs ONCE - start expensive resources
   setup_all do
-    Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
-    :ok
+    # Start application once for all tests
+    Application.ensure_all_started(:my_app)
+    
+    # Cleanup when ALL tests are done
+    on_exit(fn -> Application.stop(:my_app) end)
+    
+    {:ok, %{app_name: "my_app", port: 9999}}
   end
   
-  # Runs before each scenario
+  # Runs before EACH spex - reset state
   setup do
+    # Reset to clean state for each spex
     alias Spex.Adapters.ScenicMCP
-    
-    # Reset to clean state
     {:ok, _} = ScenicMCP.send_key("n", ["ctrl"])  # New file
     {:ok, _} = ScenicMCP.send_key("a", ["ctrl"])  # Select all
     {:ok, _} = ScenicMCP.send_key("delete")       # Clear
     
-    :ok
+    {:ok, %{timestamp: DateTime.utc_now()}}
   end
   
-  spex "Feature testing" do
-    # Each scenario starts with clean state
+  spex "Feature A testing" do
+    # This spex gets fresh context from setup
+    scenario "scenario 1" do
+      # Shares context with other scenarios in this spex
+    end
+    scenario "scenario 2" do  
+      # Same context as scenario 1
+    end
+  end
+  
+  spex "Feature B testing" do
+    # This spex gets NEW fresh context from setup running again
+    scenario "scenario 3" do
+      # Fresh timestamp, clean application state
+    end
   end
 end
 ```
+
+### How do I pass data between test steps?
+
+**Problem:** Need to share data between Given-When-Then steps in a scenario.
+
+**IMPORTANT: Context flows within scenarios, but setup timing affects what's available**
+
+- **Within a scenario**: Given/When/Then steps can pass data to each other
+- **Between scenarios in same spex**: All scenarios share the same setup context
+- **Between different spex blocks**: Each spex gets fresh setup context
+
+**Solution:**
+
+Use context passing to share data between steps, similar to ExUnit's setup callbacks:
+
+```elixir
+spex "User workflow with data sharing" do
+  scenario "Creating and using a document", context do
+    given_ "a new document is created", context do
+      document_name = "MyDocument_#{:rand.uniform(1000)}"
+      ScenicMCP.send_text(document_name)
+      ScenicMCP.send_key("enter")
+      
+      # Store data in context for later steps
+      context = Map.put(context, :document_name, document_name)
+      context = Map.put(context, :creation_time, DateTime.utc_now())
+    end
+    
+    when_ "content is added to the document", context do
+      # Use data from previous step
+      content = "Created at #{context.creation_time}"
+      ScenicMCP.send_text(content)
+      
+      # Add more data to context
+      context = Map.put(context, :content, content)
+    end
+    
+    then_ "the document can be saved with correct data", context do
+      # Verify using data from all previous steps
+      ScenicMCP.send_key("s", ["ctrl"])
+      
+      assert String.contains?(context.document_name, "MyDocument")
+      assert String.length(context.content) > 0
+      
+      {:ok, _} = ScenicMCP.take_screenshot("saved_#{context.document_name}")
+    end
+  end
+end
+```
+
+**Without context (traditional approach):**
+```elixir
+scenario "Simple workflow without data sharing" do
+  given_ "setup state" do
+    # Variables only exist within this block
+    setup_data = prepare_test()
+  end
+  
+  when_ "action occurs" do
+    # Cannot access setup_data from previous step
+    perform_action()
+  end
+  
+  then_ "result is verified" do
+    # Must recreate or re-fetch any needed data
+    verify_result()
+  end
+end
+```
+
+**Key Benefits:**
+- **Data Flow**: Variables flow naturally between test steps
+- **Cleaner Tests**: No need to re-fetch or recreate data
+- **Better Assertions**: Can verify data across the entire scenario
+- **Documentation**: Context shows what data the test cares about
 
 ### How do I test complex user workflows?
 

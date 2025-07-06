@@ -78,7 +78,7 @@ defmodule Spex.StepExecutor do
   - `:quit` - Exit the test run
   """
   defp prompt_manual_action do
-    response = IO.gets("  🎮 [ENTER] Continue | [s] Screenshot | [i] Inspect | [q] Quit: ")
+    response = IO.gets("  🎮 [ENTER] Continue | [iex] IEx Shell | [q] Quit: ")
 
     # Handle both string responses and :eof (which happens in some test environments)
     trimmed_response = case response do
@@ -88,12 +88,8 @@ defmodule Spex.StepExecutor do
     end
 
     case trimmed_response do
-      "s" ->
-        take_screenshot_if_available()
-        prompt_manual_action()
-
-      "i" ->
-        inspect_viewport_if_available()
+      "iex" ->
+        start_interactive_shell()
         prompt_manual_action()
 
       "q" ->
@@ -115,4 +111,48 @@ defmodule Spex.StepExecutor do
     end
   end
 
+  @doc """
+  Starts an interactive shell for debugging between test steps.
+  
+  User can inspect application state, call functions, take screenshots, etc.
+  Uses a simple evaluation loop that's easier to exit than full IEx.
+  """
+  defp start_interactive_shell do
+    IO.puts("")
+    IO.puts("  🐚 Starting debug shell...")
+    IO.puts("  💡 Tips:")
+    IO.puts("     - Spex.Adapters.ScenicMCP.take_screenshot(\"debug\")")
+    IO.puts("     - Spex.Adapters.ScenicMCP.inspect_viewport()")
+    IO.puts("     - Application.started_applications()")
+    IO.puts("     - Type 'exit' or 'quit' to return to test")
+    IO.puts("")
+    
+    interactive_loop()
+  end
+  
+  defp interactive_loop do
+    input = IO.gets("🐚> ")
+    
+    case String.trim(input || "") do
+      "" -> interactive_loop()
+      "exit" -> 
+        IO.puts("  🔄 Returning to test execution...")
+        :ok
+      "quit" -> 
+        IO.puts("  🔄 Returning to test execution...")
+        :ok
+      code ->
+        try do
+          {result, _binding} = Code.eval_string(code)
+          IO.puts("→ #{inspect(result)}")
+        rescue
+          error ->
+            IO.puts("❌ Error: #{Exception.message(error)}")
+        catch
+          kind, error ->
+            IO.puts("❌ #{kind}: #{inspect(error)}")
+        end
+        interactive_loop()
+    end
+  end
 end
