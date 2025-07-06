@@ -1,19 +1,22 @@
 # Spex
 
-[![Hex.pm](https://img.shields.io/hexpm/v/spex.svg)](https://hex.pm/packages/spex)
-[![Documentation](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/spex)
+[![Hex.pm](https://img.shields.io/hexpm/v/sexy_spex.svg)](https://hex.pm/packages/sexy_spex)
+[![Documentation](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/sexy_spex)
 
-**Executable Specifications for AI-Driven Development**
+**Behavior-Driven Development (BDD) for AI-Driven Testing | Executable Specifications | Specification by Example**
 
-Spex is a framework for writing executable specifications that serve as both tests and living documentation, optimized for AI-driven development workflows.
+SexySpex is a **behavior-driven development (BDD)** framework for **Elixir** that enables **executable specifications**, **specification by example**, and **AI-driven testing**. Write **Given-When-Then** scenarios that serve as both **living documentation** and **automated tests**.
 
 ## Features
 
-- **Clean DSL**: Intuitive Given-When-Then syntax for readable specifications
-- **ExUnit Foundation**: Built on ExUnit with additional AI-optimized features
-- **Scenic Integration**: Built-in helpers for GUI testing with Scenic applications
-- **AI-Optimized**: Manual mode, semantic helpers, and step-by-step execution
-- **Mix Integration**: Run with `mix spex` command only
+- **Behavior-Driven Development (BDD)**: Clean **Given-When-Then** DSL for readable scenarios
+- **Executable Specifications**: Specifications that run as automated tests (**Specification by Example**)
+- **Living Documentation**: Tests that generate human and AI-readable documentation
+- **AI-Driven Testing**: Manual mode, semantic helpers, and step-by-step execution for AI systems
+- **GUI Testing**: Built-in helpers for **Scenic** applications and visual testing
+- **ExUnit Foundation**: Built on ExUnit for reliability with enhanced BDD features
+- **Gherkin-style Syntax**: Natural language scenarios for business stakeholders
+- **Test Automation**: Automated acceptance testing with continuous validation
 
 ## Installation
 
@@ -35,7 +38,7 @@ Create a file `test/spex/user_registration_spex.exs`:
 
 ```elixir
 defmodule MyApp.UserRegistrationSpex do
-  use Spex
+  use SexySpex
 
   setup_all do
     # Start your application or setup shared state
@@ -115,18 +118,18 @@ For Scenic applications, use the built-in helpers:
 
 ```elixir
 defmodule MyGUI.LoginSpex do
-  use Spex
+  use SexySpex
 
   setup_all do
     # Start Scenic application with MCP server
-    Spex.Helpers.start_scenic_app(:my_gui_app)
+    SexySpex.Helpers.start_scenic_app(:my_gui_app)
   end
 
   spex "user can login via GUI", context do
     scenario "successful login flow", context do
       given_ "the application is running", context do
-        assert Spex.Helpers.application_running?(:my_gui_app)
-        assert Spex.Helpers.can_connect_to_scenic_mcp?(context.port)
+        assert SexySpex.Helpers.application_running?(:my_gui_app)
+        assert SexySpex.Helpers.can_connect_to_scenic_mcp?(context.port)
       end
 
       when_ "user enters valid credentials", context do
@@ -150,16 +153,16 @@ end
 
 ## Framework Helpers
 
-Spex provides semantic helpers for common patterns:
+SexySpex provides semantic helpers for common patterns:
 
 ```elixir
 # Start Scenic applications with MCP server
-Spex.Helpers.start_scenic_app(:quillex)
-Spex.Helpers.start_scenic_app(:flamelex, port: 8888)
+SexySpex.Helpers.start_scenic_app(:quillex)
+SexySpex.Helpers.start_scenic_app(:flamelex, port: 8888)
 
 # Test connectivity
-Spex.Helpers.can_connect_to_scenic_mcp?(9999)
-Spex.Helpers.application_running?(:my_app)
+SexySpex.Helpers.can_connect_to_scenic_mcp?(9999)
+SexySpex.Helpers.application_running?(:my_app)
 
 # Automatically handles:
 # - Compilation (Mix.Task.run("compile"))
@@ -191,15 +194,15 @@ Perfect for:
 
 ### Built on ExUnit
 
-Spex is 100% built on ExUnit but provides a controlled execution environment:
+SexySpex is 100% built on ExUnit but provides a controlled execution environment:
 
 ```elixir
 # When you write:
-use Spex
+use SexySpex
 
 # You get:
 use ExUnit.Case, async: false  # Standard ExUnit test case
-import Spex.DSL               # spex/scenario/given_/when_/then_
+import SexySpex.DSL               # spex/scenario/given_/when_/then_
 ```
 
 ### Execution Flow
@@ -210,23 +213,36 @@ mix spex → Mix.Tasks.Spex → ExUnit.start() → Load spex files → ExUnit.ru
 
 ### Core Modules
 
-- **`Spex`** - Main module with `use` macro and helpers
-- **`Spex.DSL`** - Given-When-Then macros
-- **`Spex.Helpers`** - Semantic helper functions
-- **`Spex.StepExecutor`** - Manual mode and execution control
+- **`SexySpex`** - Main module with `use` macro and helpers
+- **`SexySpex.DSL`** - Given-When-Then macros
+- **`SexySpex.Helpers`** - Semantic helper functions
+- **`SexySpex.StepExecutor`** - Manual mode and execution control
 - **`Mix.Tasks.Spex`** - Mix task with lifecycle management
+
+## Use Cases
+
+Perfect for teams practicing:
+
+- **Behavior-Driven Development (BDD)** - Collaborate with stakeholders using natural language
+- **Specification by Example** - Document requirements through executable examples  
+- **Acceptance Test-Driven Development (ATDD)** - Define acceptance criteria before implementation
+- **AI-Driven Testing** - Enable AI systems to write and execute test scenarios
+- **GUI Test Automation** - Automate user interface testing with visual feedback
+- **Continuous Integration** - Automated testing in CI/CD pipelines
+- **Living Documentation** - Keep documentation in sync with implementation
 
 ## Philosophy
 
-Spex bridges the gap between human requirements and AI validation by providing:
+Spex bridges the gap between **business requirements** and **automated testing** by providing:
 
-- **Executable Documentation**: Specifications that run as tests
-- **AI-Readable Format**: Structured, semantic test descriptions
-- **Visual Evidence**: Screenshot capture and state validation  
-- **Interactive Control**: Manual mode for human oversight
+- **Executable Documentation**: Specifications that run as tests (**Specification by Example**)
+- **Natural Language Scenarios**: **Gherkin-style** Given-When-Then syntax
+- **AI-Readable Format**: Structured, semantic test descriptions for AI systems
+- **Visual Evidence**: Screenshot capture and state validation for GUI testing
+- **Interactive Control**: Manual mode for human oversight and debugging
 - **Semantic Helpers**: Functions that read like human language
 
-This enables AI systems to write, execute, and understand tests while maintaining human readability and control.
+This enables **AI systems** to write, execute, and understand tests while maintaining human readability and **stakeholder collaboration**.
 
 ## 📚 Documentation
 

@@ -27,7 +27,7 @@ This directory contains comprehensive documentation for the Spex framework.
 When updating documentation:
 1. Keep examples current with the latest framework version
 2. Remove references to deprecated features (like the old adapter system)
-3. Use semantic helper functions (`Spex.Helpers.*`) in examples
+3. Use semantic helper functions (`SexySpex.Helpers.*`) in examples
 4. Ensure all examples can be run with `mix spex` only
 
 ## Framework Architecture
@@ -40,6 +40,6 @@ mix spex → ExUnit.start() → Load spex files → ExUnit.run()
 
 Key modules:
 - `Spex` - Main module and helpers
-- `Spex.DSL` - Given-When-Then macros  
-- `Spex.Helpers` - Semantic helper functions
+- `SexySpex.DSL` - Given-When-Then macros  
+- `SexySpex.Helpers` - Semantic helper functions
 - `Mix.Tasks.Spex` - Mix task with lifecycle management

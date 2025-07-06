@@ -1,6 +1,6 @@
 # 🔧 Spex Troubleshooting Guide
 
-This guide helps you diagnose and fix common issues when using Spex.
+This guide helps you diagnose and fix common issues when using SexySpex.
 
 ## Quick Diagnosis
 

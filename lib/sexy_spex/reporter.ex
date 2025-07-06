@@ -1,4 +1,4 @@
-defmodule Spex.Reporter do
+defmodule SexySpex.Reporter do
   @moduledoc """
   Handles reporting and output formatting for spex execution.
 

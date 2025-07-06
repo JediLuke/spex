@@ -18,7 +18,7 @@
 ```elixir
 # test/spex/calculator_spex.exs
 defmodule Calculator.BasicSpex do
-  use Spex
+  use SexySpex
   
   spex "calculator can add numbers" do
     scenario "adding two positive numbers" do
@@ -94,7 +94,7 @@ end
 ### **How to Create Custom Adapters**
 ```elixir
 defmodule MyApp.CustomAdapter do
-  @behaviour Spex.Adapter
+  @behaviour SexySpex.Adapter
   
   def setup do
     # Initialize your testing environment
@@ -161,11 +161,11 @@ end
 
 ### **How the Spex Tag System Works**
 
-When you `use Spex` in a test module, it automatically adds `@moduletag spex: true` to the entire module. This leverages ExUnit's built-in tag filtering system:
+When you `use SexySpex` in a test module, it automatically adds `@moduletag spex: true` to the entire module. This leverages ExUnit's built-in tag filtering system:
 
 ```elixir
 defmodule MyApp.IntegrationSpex do
-  use Spex  # This adds @moduletag spex: true automatically
+  use SexySpex  # This adds @moduletag spex: true automatically
   
   spex "user workflow" do
     # This creates a regular ExUnit test tagged with :spex
@@ -193,7 +193,7 @@ This design allows spex tests to be excluded by default (since they may require 
 - `__using__/1` - Macro to set up spex environment
 - `setup/1` - Initialize adapters and configuration
 
-##### `Spex.DSL`  
+##### `SexySpex.DSL`  
 **Domain-specific language macros**
 
 - `spex/2` - Define a specification
@@ -206,8 +206,8 @@ This design allows spex tests to be excluded by default (since they may require 
 - `and_/2` - Additional context or cleanup steps
 
 **Note on Step Types:** The `given_`, `when_`, `then_`, and `and_` macros are functionally identical - they all execute code blocks and report their step type to the reporter. The only difference is the label in the output (e.g., "Given: ...", "When: ...", etc.). The naming follows BDD conventions for readability, but you can technically use them in any order. Each macro simply:
-1. Reports the step type and description to `Spex.Reporter`
-2. Executes the provided code block via `Spex.StepExecutor`
+1. Reports the step type and description to `SexySpex.Reporter`
+2. Executes the provided code block via `SexySpex.StepExecutor`
 3. Continues to the next step
 
 This design keeps the implementation simple while providing semantic structure for test scenarios.
@@ -267,7 +267,7 @@ and_ "user completes with World" do
 end
 ```
 
-##### `Spex.Reporter`
+##### `SexySpex.Reporter`
 **Output formatting and progress tracking**
 
 - `start_spex/2` - Begin reporting for a specification
@@ -288,7 +288,7 @@ end
 - `defaults/0` - Returns default configuration map
 - `setup/1` - Initialize adapter with configuration
 
-##### `Spex.Adapters.ScenicMCP`  
+##### `SexySpex.Adapters.ScenicMCP`  
 **Scenic GUI testing adapter**
 
 - `setup/0` - Verify MCP server connection
@@ -327,7 +327,7 @@ mix spex --verbose --timeout 120000       # Verbose with 2min timeout
 **Application Configuration:**
 ```elixir
 config :spex,
-  adapter: Spex.Adapters.ScenicMCP,   # Default: Spex.Adapters.Default
+  adapter: SexySpex.Adapters.ScenicMCP,   # Default: SexySpex.Adapters.Default
   screenshot_dir: "test/screenshots", # Default: "."
   port: 9999                          # Default: 9999 (for ScenicMCP)
 ```
@@ -335,7 +335,7 @@ config :spex,
 **Runtime Configuration:**
 ```elixir
 # In test setup
-Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
+Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
 Application.put_env(:spex, :screenshot_dir, "tmp/screenshots")
 ```
 

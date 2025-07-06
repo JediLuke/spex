@@ -1,4 +1,4 @@
-defmodule Spex.DSL do
+defmodule SexySpex.DSL do
   @moduledoc """
   Domain-specific language for writing executable specifications.
 
@@ -30,16 +30,16 @@ defmodule Spex.DSL do
       @spex_opts unquote(opts)
 
       test "Spex: #{unquote(name)}", context do
-        Spex.Reporter.start_spex(@spex_name, @spex_opts)
+        SexySpex.Reporter.start_spex(@spex_name, @spex_opts)
 
         try do
           # Make ExUnit context available to scenarios
           var!(exunit_context) = context
           unquote(block)
-          Spex.Reporter.spex_passed(@spex_name)
+          SexySpex.Reporter.spex_passed(@spex_name)
         rescue
           error ->
-            Spex.Reporter.spex_failed(@spex_name, error)
+            SexySpex.Reporter.spex_failed(@spex_name, error)
             reraise error, __STACKTRACE__
         end
       end
@@ -53,14 +53,14 @@ defmodule Spex.DSL do
   """
   defmacro scenario(name, do: block) do
     quote do
-      Spex.Reporter.start_scenario(unquote(name))
+      SexySpex.Reporter.start_scenario(unquote(name))
 
       try do
         unquote(block)
-        Spex.Reporter.scenario_passed(unquote(name))
+        SexySpex.Reporter.scenario_passed(unquote(name))
       rescue
         error ->
-          Spex.Reporter.scenario_failed(unquote(name), error)
+          SexySpex.Reporter.scenario_failed(unquote(name), error)
           reraise error, __STACKTRACE__
       end
     end
@@ -91,7 +91,7 @@ defmodule Spex.DSL do
   """
   defmacro scenario(name, context_var, do: block) do
     quote do
-      Spex.Reporter.start_scenario(unquote(name))
+      SexySpex.Reporter.start_scenario(unquote(name))
 
       try do
         # Use the ExUnit context that comes from setup/setup_all
@@ -102,10 +102,10 @@ defmodule Spex.DSL do
           _ -> %{}
         end
         unquote(block)
-        Spex.Reporter.scenario_passed(unquote(name))
+        SexySpex.Reporter.scenario_passed(unquote(name))
       rescue
         error ->
-          Spex.Reporter.scenario_failed(unquote(name), error)
+          SexySpex.Reporter.scenario_failed(unquote(name), error)
           reraise error, __STACKTRACE__
       end
     end
@@ -129,9 +129,9 @@ defmodule Spex.DSL do
   """
   defmacro given_(description, do: block) do
     quote do
-      Spex.Reporter.step("Given", unquote(description))
+      SexySpex.Reporter.step("Given", unquote(description))
       
-      Spex.StepExecutor.execute_step("Given", unquote(description), fn ->
+      SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
         unquote(block)
       end)
     end
@@ -139,9 +139,9 @@ defmodule Spex.DSL do
   
   defmacro given_(description, context_var, do: block) do
     quote do
-      Spex.Reporter.step("Given", unquote(description))
+      SexySpex.Reporter.step("Given", unquote(description))
       
-      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("Given", unquote(description), fn ->
+      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Return the context (either explicitly returned or the current context)
@@ -158,9 +158,9 @@ defmodule Spex.DSL do
   """
   defmacro when_(description, do: block) do
     quote do
-      Spex.Reporter.step("When", unquote(description))
+      SexySpex.Reporter.step("When", unquote(description))
       
-      Spex.StepExecutor.execute_step("When", unquote(description), fn ->
+      SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
         unquote(block)
       end)
     end
@@ -168,9 +168,9 @@ defmodule Spex.DSL do
   
   defmacro when_(description, context_var, do: block) do
     quote do
-      Spex.Reporter.step("When", unquote(description))
+      SexySpex.Reporter.step("When", unquote(description))
       
-      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("When", unquote(description), fn ->
+      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Return the context (either explicitly returned or the current context)
@@ -187,9 +187,9 @@ defmodule Spex.DSL do
   """
   defmacro then_(description, do: block) do
     quote do
-      Spex.Reporter.step("Then", unquote(description))
+      SexySpex.Reporter.step("Then", unquote(description))
       
-      Spex.StepExecutor.execute_step("Then", unquote(description), fn ->
+      SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
         unquote(block)
       end)
     end
@@ -197,9 +197,9 @@ defmodule Spex.DSL do
   
   defmacro then_(description, context_var, do: block) do
     quote do
-      Spex.Reporter.step("Then", unquote(description))
+      SexySpex.Reporter.step("Then", unquote(description))
       
-      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("Then", unquote(description), fn ->
+      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Return the context (either explicitly returned or the current context)
@@ -216,9 +216,9 @@ defmodule Spex.DSL do
   """
   defmacro and_(description, do: block) do
     quote do
-      Spex.Reporter.step("And", unquote(description))
+      SexySpex.Reporter.step("And", unquote(description))
       
-      Spex.StepExecutor.execute_step("And", unquote(description), fn ->
+      SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
         unquote(block)
       end)
     end
@@ -226,9 +226,9 @@ defmodule Spex.DSL do
   
   defmacro and_(description, context_var, do: block) do
     quote do
-      Spex.Reporter.step("And", unquote(description))
+      SexySpex.Reporter.step("And", unquote(description))
       
-      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("And", unquote(description), fn ->
+      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Return the context (either explicitly returned or the current context)

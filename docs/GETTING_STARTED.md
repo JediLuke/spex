@@ -1,11 +1,11 @@
-# 🚀 Getting Started with Spex
+# 🚀 Getting Started with SexySpex
 
-**Spex** is an AI-driven testing framework for Scenic GUI applications. It lets you write executable specifications that serve as both tests and living documentation, specifically designed for visual applications that need real interaction testing.
+**SexySpex** is an AI-driven testing framework for Scenic GUI applications. It lets you write executable specifications that serve as both tests and living documentation, specifically designed for visual applications that need real interaction testing.
 
 ## Table of Contents
 
-1. [What is Spex?](#what-is-spex)
-2. [Why Use Spex?](#why-use-spex)
+1. [What is SexySpex?](#what-is-sexyspex)
+2. [Why Use SexySpex?](#why-use-sexyspex)
 3. [Installation](#installation)
 4. [Your First Spex](#your-first-spex)
 5. [Understanding Given/When/Then](#understanding-givenwhentheng)
@@ -14,9 +14,9 @@
 8. [Common Patterns](#common-patterns)
 9. [Next Steps](#next-steps)
 
-## What is Spex?
+## What is SexySpex?
 
-Spex combines:
+SexySpex combines:
 - **Behavior-Driven Development (BDD)** with Given/When/Then syntax
 - **Visual Testing** through automated screenshots
 - **AI Integration** via Model Context Protocol (MCP)
@@ -24,7 +24,7 @@ Spex combines:
 
 Think of it as "Cucumber for GUI applications" but specifically designed for AI-driven development workflows.
 
-## Why Use Spex?
+## Why Use SexySpex?
 
 ### Traditional Testing Problems
 ```elixir
@@ -34,7 +34,7 @@ test "text input works" do
 end
 ```
 
-### Spex Approach
+### SexySpex Approach
 ```elixir
 # Spex - tests the actual GUI interaction
 spex "user can type text in the editor" do
@@ -111,7 +111,7 @@ Let's create a simple spex to test basic application functionality.
 
 ```elixir
 defmodule MyApp.HelloWorldSpex do
-  use Spex
+  use SexySpex
   
   @moduledoc """
   Your first spex - validates basic application interaction.
@@ -119,7 +119,7 @@ defmodule MyApp.HelloWorldSpex do
   
   # Configure for Scenic MCP testing
   setup_all do
-    Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
+    Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
     Application.put_env(:spex, :port, 9999)
     Application.put_env(:spex, :screenshot_dir, "test/screenshots")
     
@@ -131,7 +131,7 @@ defmodule MyApp.HelloWorldSpex do
     description: "Validates the app starts and responds to input",
     tags: [:smoke_test, :basic_interaction] do
     
-    alias Spex.Adapters.ScenicMCP
+    alias SexySpex.Adapters.ScenicMCP
     
     scenario "Application is running and accessible" do
       given "the application should be started" do

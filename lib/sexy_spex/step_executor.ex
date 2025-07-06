@@ -1,6 +1,6 @@
-defmodule Spex.StepExecutor do
+defmodule SexySpex.StepExecutor do
   @moduledoc """
-  Core step execution system for Spex.
+  Core step execution system for SexySpex.
 
   Handles stepping, manual mode, timing, and execution control across all adapters.
   This module provides framework-agnostic step control, allowing manual mode to work
@@ -107,8 +107,8 @@ defmodule Spex.StepExecutor do
     IO.puts("")
     IO.puts("  🐚 Starting debug shell...")
     IO.puts("  💡 Tips:")
-    IO.puts("     - Spex.Adapters.ScenicMCP.take_screenshot(\"debug\")")
-    IO.puts("     - Spex.Adapters.ScenicMCP.inspect_viewport()")
+    IO.puts("     - SexySpex.Adapters.ScenicMCP.take_screenshot(\"debug\")")
+    IO.puts("     - SexySpex.Adapters.ScenicMCP.inspect_viewport()")
     IO.puts("     - Application.started_applications()")
     IO.puts("     - Type 'exit' or 'quit' to return to test")
     IO.puts("")

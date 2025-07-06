@@ -1,6 +1,6 @@
-defmodule Spex.FrameworkTest do
+defmodule SexySpex.FrameworkTest do
   @moduledoc """
-  Comprehensive tests for Spex framework functionality.
+  Comprehensive tests for SexySpex framework functionality.
   
   Tests the core features that matter:
   - DSL macros are available and work
@@ -8,7 +8,7 @@ defmodule Spex.FrameworkTest do
   - Setup lifecycle (setup_all/setup)
   - Helper function availability
   """
-  use Spex
+  use SexySpex
 
   setup_all do
     # Test that setup_all provides shared context
@@ -49,14 +49,14 @@ defmodule Spex.FrameworkTest do
     scenario "essential modules are available" do
       given_ "the framework is loaded" do
         # Test that core modules exist
-        assert Code.ensure_loaded?(Spex.DSL)
-        assert Code.ensure_loaded?(Spex.Helpers)
+        assert Code.ensure_loaded?(SexySpex.DSL)
+        assert Code.ensure_loaded?(SexySpex.Helpers)
         assert Code.ensure_loaded?(Mix.Tasks.Spex)
       end
 
       when_ "we check DSL macros" do
         # Test that DSL macros are defined
-        macros = Spex.DSL.__info__(:macros)
+        macros = SexySpex.DSL.__info__(:macros)
         assert Keyword.has_key?(macros, :spex)
         assert Keyword.has_key?(macros, :scenario)
         assert Keyword.has_key?(macros, :given_)
@@ -66,7 +66,7 @@ defmodule Spex.FrameworkTest do
 
       then_ "helper functions are available" do
         # Test that helper functions exist
-        helpers = Spex.Helpers.__info__(:functions)
+        helpers = SexySpex.Helpers.__info__(:functions)
         assert Keyword.has_key?(helpers, :start_scenic_app)
         assert Keyword.has_key?(helpers, :can_connect_to_scenic_mcp?)
         assert Keyword.has_key?(helpers, :application_running?)

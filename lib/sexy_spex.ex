@@ -1,21 +1,21 @@
-defmodule Spex do
+defmodule SexySpex do
   @moduledoc """
   Executable specifications for AI-driven development.
 
-  Spex provides a framework for writing executable specifications that serve as
+  SexySpex provides a framework for writing executable specifications that serve as
   both tests and living documentation, optimized for AI-driven development workflows.
 
   ## Technical Architecture
 
-  Spex is built on top of ExUnit but provides a controlled execution environment
+  SexySpex is built on top of ExUnit but provides a controlled execution environment
   specifically designed for AI-driven testing. Here's how it works:
 
   ### Core Architecture
 
-  1. **ExUnit Foundation**: Spex uses ExUnit.Case under the hood for all test execution
-  2. **Custom DSL**: Adds spex/scenario/given_/when_/then_ macros via Spex.DSL
+  1. **ExUnit Foundation**: SexySpex uses ExUnit.Case under the hood for all test execution
+  2. **Custom DSL**: Adds spex/scenario/given_/when_/then_ macros via SexySpex.DSL
   3. **Controlled Execution**: Only runs via `mix spex` command, never through `mix test`
-  4. **Framework Helpers**: Provides Spex.Helpers for common patterns like app startup
+  4. **Framework Helpers**: Provides SexySpex.Helpers for common patterns like app startup
 
   ### Execution Flow
 
@@ -43,13 +43,13 @@ defmodule Spex do
 
   When you write:
   ```elixir
-  use Spex
+  use SexySpex
   ```
 
   You get:
   ```elixir
   use ExUnit.Case, async: false  # Standard ExUnit test case
-  import Spex.DSL               # spex/scenario/given_/when_/then_
+  import SexySpex.DSL               # spex/scenario/given_/when_/then_
   require Logger                # Logging support
   ```
 
@@ -59,9 +59,9 @@ defmodule Spex do
   - `on_exit` for cleanup
   - Pattern matching in tests
 
-  ### Spex vs ExUnit
+  ### SexySpex vs ExUnit
 
-  | Feature | Spex | ExUnit |
+  | Feature | SexySpex | ExUnit |
   |---------|------|--------|
   | Execution | `mix spex` only | `mix test` |
   | File Pattern | `*_spex.exs` | `*_test.exs` |
@@ -72,17 +72,17 @@ defmodule Spex do
 
   ### Integration with Scenic Applications
 
-  Spex provides special helpers for Scenic GUI applications:
-  - `Spex.Helpers.start_scenic_app/2` - Start app with MCP server
-  - `Spex.Helpers.can_connect_to_scenic_mcp?/1` - Test connectivity
-  - `Spex.Helpers.application_running?/1` - Check app status
+  SexySpex provides special helpers for Scenic GUI applications:
+  - `SexySpex.Helpers.start_scenic_app/2` - Start app with MCP server
+  - `SexySpex.Helpers.can_connect_to_scenic_mcp?/1` - Test connectivity
+  - `SexySpex.Helpers.application_running?/1` - Check app status
 
   This makes AI-driven GUI testing much simpler and more reliable.
 
   ## Basic Example
 
       defmodule MyApp.UserSpex do
-        use Spex
+        use SexySpex
 
         spex "user registration works" do
           scenario "successful registration" do
@@ -105,14 +105,14 @@ defmodule Spex do
 
   ## GUI Application Testing
 
-  For GUI applications, use Spex.Helpers for easy setup:
+  For GUI applications, use SexySpex.Helpers for easy setup:
 
       defmodule MyApp.GUISpex do
-        use Spex
+        use SexySpex
 
         setup_all do
           # Start GUI application with MCP server
-          Spex.Helpers.start_scenic_app(:my_gui_app)
+          SexySpex.Helpers.start_scenic_app(:my_gui_app)
         end
 
         setup do
@@ -123,12 +123,12 @@ defmodule Spex do
         spex "GUI interaction works", context do
           scenario "application connectivity", context do
             given_ "application is running", context do
-              assert Spex.Helpers.application_running?(:my_gui_app)
+              assert SexySpex.Helpers.application_running?(:my_gui_app)
               context
             end
 
             then_ "we can connect to MCP server", context do
-              assert Spex.Helpers.can_connect_to_scenic_mcp?(context.port)
+              assert SexySpex.Helpers.can_connect_to_scenic_mcp?(context.port)
               context
             end
           end
@@ -137,7 +137,7 @@ defmodule Spex do
 
   ## Running Spex
 
-  Spex files can only be executed via the `mix spex` command:
+  SexySpex files can only be executed via the `mix spex` command:
 
       # Run all spex files
       mix spex
@@ -148,7 +148,7 @@ defmodule Spex do
       # Run in manual mode (step-by-step)
       mix spex --manual
 
-  **Important**: Spex files cannot be run via `mix test`. This ensures proper
+  **Important**: SexySpex files cannot be run via `mix test`. This ensures proper
   compilation and application lifecycle management for AI-driven testing.
 
   """
@@ -157,7 +157,7 @@ defmodule Spex do
   defmacro __using__(opts) do
     quote do
       use ExUnit.Case, async: false
-      import Spex.DSL
+      import SexySpex.DSL
       require Logger
 
       @spex_opts unquote(opts)

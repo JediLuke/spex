@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Spex do
   @moduledoc """
   Run spex files - executable specifications for AI-driven development.
 
-  Spex provides a framework for writing executable specifications that serve as
+  SexySpex provides a framework for writing executable specifications that serve as
   both tests and living documentation, optimized for AI-driven development workflows.
 
   Each spex file manages its own application lifecycle using setup_all and setup blocks:

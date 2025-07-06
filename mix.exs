@@ -1,4 +1,4 @@
-defmodule Spex.MixProject do
+defmodule SexySpex.MixProject do
   use Mix.Project
 
   @version "0.1.0"
@@ -74,7 +74,7 @@ defmodule Spex.MixProject do
         "CHANGELOG.md": [title: "Changelog"]
       ],
       groups_for_modules: [
-        "Core": [Spex, Spex.DSL, Spex.Helpers, Spex.Reporter, Spex.StepExecutor],
+        "Core": [SexySpex, SexySpex.DSL, SexySpex.Helpers, SexySpex.Reporter, SexySpex.StepExecutor],
         "Mix Tasks": [Mix.Tasks.Spex]
       ]
     ]

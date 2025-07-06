@@ -1,6 +1,6 @@
 # 📖 Spex How-To Guide
 
-This guide provides solutions to common problems and tasks when using Spex. Each section answers a specific "How do I...?" question.
+This guide provides solutions to common problems and tasks when using SexySpex. Each section answers a specific "How do I...?" question.
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ mkdir -p test/screenshots
 3. **Create basic config file `test/spex/spex_helper.exs`:**
 ```elixir
 # Common setup for all spex files
-Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
+Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
 Application.put_env(:spex, :port, 9999)
 Application.put_env(:spex, :screenshot_dir, "test/screenshots")
 
@@ -56,7 +56,7 @@ File.mkdir_p!("test/screenshots")
 4. **Create your first spex file `test/spex/smoke_test_spex.exs`:**
 ```elixir
 defmodule MyApp.SmokeTestSpex do
-  use Spex
+  use SexySpex
   
   setup_all do
     Code.require_file("test/spex/spex_helper.exs")
@@ -64,7 +64,7 @@ defmodule MyApp.SmokeTestSpex do
   end
   
   spex "Application starts correctly" do
-    alias Spex.Adapters.ScenicMCP
+    alias SexySpex.Adapters.ScenicMCP
     
     scenario "Basic connectivity" do
       given "the application should be running" do
@@ -88,7 +88,7 @@ end
 ```elixir
 # In your spex file or config
 setup_all do
-  Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
+  Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
   Application.put_env(:spex, :port, 8888)  # Custom port
   Application.put_env(:spex, :screenshot_dir, "tmp/screenshots")  # Custom directory
   
@@ -189,7 +189,7 @@ end
 **Timeline Example:**
 ```elixir
 defmodule MyApp.ExampleSpex do
-  use Spex
+  use SexySpex
   
   setup_all do
     IO.puts("🚀 setup_all: Runs ONCE when module loads")
@@ -232,7 +232,7 @@ end
 
 ```elixir
 defmodule MyApp.FeatureSpex do
-  use Spex
+  use SexySpex
   
   # Runs ONCE - start expensive resources
   setup_all do
@@ -248,7 +248,7 @@ defmodule MyApp.FeatureSpex do
   # Runs before EACH spex - reset state
   setup do
     # Reset to clean state for each spex
-    alias Spex.Adapters.ScenicMCP
+    alias SexySpex.Adapters.ScenicMCP
     {:ok, _} = ScenicMCP.send_key("n", ["ctrl"])  # New file
     {:ok, _} = ScenicMCP.send_key("a", ["ctrl"])  # Select all
     {:ok, _} = ScenicMCP.send_key("delete")       # Clear
@@ -358,7 +358,7 @@ end
 
 ```elixir
 spex "Complete user onboarding workflow" do
-  alias Spex.Adapters.ScenicMCP
+  alias SexySpex.Adapters.ScenicMCP
   
   scenario "New user complete journey" do
     given "application is at welcome screen" do
@@ -601,7 +601,7 @@ end
 
 ### How do I integrate Spex with my development workflow?
 
-**Problem:** Want to use Spex effectively during development.
+**Problem:** Want to use SexySpex effectively during development.
 
 **Development Workflow:**
 
@@ -662,7 +662,7 @@ mix spex --pattern "**/integration/*" # End-to-end workflows
 # test/spex/shared_config.exs
 defmodule SpexConfig do
   def setup_common do
-    Application.put_env(:spex, :adapter, Spex.Adapters.ScenicMCP)
+    Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
     Application.put_env(:spex, :port, 9999)
     Application.put_env(:spex, :screenshot_dir, "test/screenshots")
     
@@ -670,7 +670,7 @@ defmodule SpexConfig do
   end
   
   def wait_for_standard_state do
-    alias Spex.Adapters.ScenicMCP
+    alias SexySpex.Adapters.ScenicMCP
     
     # Common wait patterns
     assert ScenicMCP.wait_for_app(9999, 10)
@@ -684,7 +684,7 @@ end
 ```elixir
 # In each spex file
 defmodule MyApp.FeatureSpex do
-  use Spex
+  use SexySpex
   
   setup_all do
     Code.require_file("test/spex/shared_config.exs")
@@ -730,7 +730,7 @@ defmodule SharedScenarios do
   defmacro login_scenario do
     quote do
       scenario "User login process" do
-        alias Spex.Adapters.ScenicMCP
+        alias SexySpex.Adapters.ScenicMCP
         
         given "user is at login screen" do
           {:ok, _} = ScenicMCP.take_screenshot("login_screen")
@@ -753,7 +753,7 @@ end
 
 # Usage in multiple spex files
 defmodule MyApp.DashboardSpex do
-  use Spex
+  use SexySpex
   require SharedScenarios
   
   spex "Dashboard functionality" do
@@ -851,4 +851,4 @@ end
 
 ---
 
-This how-to guide should help you solve common problems and implement effective testing patterns with Spex. For more specific issues, check the [Troubleshooting Guide](TROUBLESHOOTING.md) or [Technical Reference](TECHNICAL_REFERENCE.md).
+This how-to guide should help you solve common problems and implement effective testing patterns with SexySpex. For more specific issues, check the [Troubleshooting Guide](TROUBLESHOOTING.md) or [Technical Reference](TECHNICAL_REFERENCE.md).
