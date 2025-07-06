@@ -2,7 +2,7 @@ defmodule Spex.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/your-org/spex"
+  @source_url "https://github.com/JediLuke/spex"
 
   def project do
     [
@@ -46,12 +46,8 @@ defmodule Spex.MixProject do
 
   defp description do
     """
-    Executable specifications for AI-driven development.
-
-    Spex provides a framework for writing executable specifications that serve as
-    both tests and living documentation, optimized for AI-driven development workflows.
-    Features include a clean DSL, adapter system for different testing environments,
-    and built-in support for visual testing with Scenic applications.
+    Executable specifications for AI-driven development. Built on ExUnit with Given-When-Then DSL, 
+    manual mode, semantic helpers, and GUI testing support for Scenic applications.
     """
   end
 
@@ -63,7 +59,7 @@ defmodule Spex.MixProject do
         "GitHub" => @source_url,
         "Documentation" => "https://hexdocs.pm/spex"
       },
-      maintainers: ["Your Name"],
+      maintainers: ["Luke"],
       files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
@@ -78,8 +74,7 @@ defmodule Spex.MixProject do
         "CHANGELOG.md": [title: "Changelog"]
       ],
       groups_for_modules: [
-        "Core": [Spex, Spex.DSL, Spex.Reporter],
-        "Adapters": [Spex.Adapters.Default, Spex.Adapters.ScenicMCP],
+        "Core": [Spex, Spex.DSL, Spex.Helpers, Spex.Reporter, Spex.StepExecutor],
         "Mix Tasks": [Mix.Tasks.Spex]
       ]
     ]
