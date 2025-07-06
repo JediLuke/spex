@@ -1,7 +1,7 @@
 defmodule Spex.StepExecutor do
   @moduledoc """
   Core step execution system for Spex.
-  
+
   Handles stepping, manual mode, timing, and execution control across all adapters.
   This module provides framework-agnostic step control, allowing manual mode to work
   with any testing scenario (Scenic, Phoenix, libraries, etc.).
@@ -9,20 +9,20 @@ defmodule Spex.StepExecutor do
 
   @doc """
   Executes a step with the configured execution mode.
-  
+
   Supports:
   - Normal execution (immediate)
-  - Timed execution (with delays) 
+  - Timed execution (with delays)
   - Manual mode (step-by-step with user prompts)
-  
+
   ## Parameters
-  
+
     * `step_type` - The type of step ("Given", "When", "Then", "And")
     * `description` - Human-readable description of the step
     * `step_function` - The function to execute for this step
-    
+
   ## Configuration
-  
+
   Reads configuration from application environment:
   - `:spex, :manual_mode` - Boolean, enables manual stepping
   - `:spex, :step_delay` - Integer, delay in ms between steps
@@ -31,7 +31,7 @@ defmodule Spex.StepExecutor do
   def execute_step(step_type, description, step_function) do
     # Check if manual mode is enabled
     manual_mode = Application.get_env(:spex, :manual_mode, false)
-    
+
     if manual_mode do
       execute_manual_step(step_type, description, step_function)
     else
@@ -45,14 +45,14 @@ defmodule Spex.StepExecutor do
   defp execute_manual_step(step_type, description, step_function) do
     IO.puts("")
     IO.puts("  🎯 NEXT STEP: #{step_type} #{description}")
-    
+
     case prompt_manual_action() do
       :continue ->
         IO.puts("  ▶️  Executing step...")
         result = step_function.()
         IO.puts("  ✅ Step completed")
         result
-        
+
       :quit ->
         IO.puts("  ❌ Quitting manual mode...")
         System.halt(0)
@@ -65,40 +65,40 @@ defmodule Spex.StepExecutor do
   defp execute_timed_step(step_type, description, step_function) do
     # Apply pre-step delay if configured
     apply_step_delay()
-    
+
     # Execute the step
     step_function.()
   end
 
   @doc """
   Prompts the user for the next action in manual mode.
-  
+
   Returns:
   - `:continue` - Proceed with step execution
   - `:quit` - Exit the test run
   """
   defp prompt_manual_action do
     response = IO.gets("  🎮 [ENTER] Continue | [s] Screenshot | [i] Inspect | [q] Quit: ")
-    
+
     # Handle both string responses and :eof (which happens in some test environments)
     trimmed_response = case response do
       :eof -> ""
       response when is_binary(response) -> String.trim(response)
       _ -> ""
     end
-    
+
     case trimmed_response do
       "s" ->
         take_screenshot_if_available()
         prompt_manual_action()
-        
+
       "i" ->
         inspect_viewport_if_available()
         prompt_manual_action()
-        
+
       "q" ->
         :quit
-        
+
       _ ->
         :continue
     end
@@ -109,59 +109,10 @@ defmodule Spex.StepExecutor do
   """
   defp apply_step_delay do
     delay_ms = Application.get_env(:spex, :step_delay, 0)
-    
+
     if delay_ms > 0 do
       Process.sleep(delay_ms)
     end
   end
 
-  @doc """
-  Takes a screenshot if the current adapter supports it.
-  """
-  defp take_screenshot_if_available do
-    adapter = Application.get_env(:spex, :adapter)
-    config = Application.get_env(:spex, :config, %{})
-    
-    if function_exported?(adapter, :take_screenshot, 2) do
-      timestamp = :os.system_time(:millisecond)
-      
-      case adapter.take_screenshot("manual_step_#{timestamp}", config) do
-        {:ok, result} ->
-          IO.puts("  📸 Screenshot saved: #{result.filename}")
-        {:error, reason} ->
-          IO.puts("  ⚠️  Screenshot failed: #{reason}")
-      end
-    else
-      if function_exported?(adapter, :take_screenshot, 1) do
-        timestamp = :os.system_time(:millisecond)
-        
-        case adapter.take_screenshot("manual_step_#{timestamp}") do
-          {:ok, result} ->
-            IO.puts("  📸 Screenshot saved: #{result.filename}")
-          {:error, reason} ->
-            IO.puts("  ⚠️  Screenshot failed: #{reason}")
-        end
-      else
-        IO.puts("  ⚠️  Screenshot not supported by current adapter")
-      end
-    end
-  end
-
-  @doc """
-  Inspects the viewport if the current adapter supports it.
-  """
-  defp inspect_viewport_if_available do
-    adapter = Application.get_env(:spex, :adapter)
-    
-    if function_exported?(adapter, :inspect_viewport, 0) do
-      case adapter.inspect_viewport() do
-        {:ok, viewport} ->
-          IO.puts("  🔍 Viewport: #{inspect(viewport)}")
-        {:error, reason} ->
-          IO.puts("  ⚠️  Viewport inspection failed: #{reason}")
-      end
-    else
-      IO.puts("  ⚠️  Viewport inspection not supported by current adapter")
-    end
-  end
 end

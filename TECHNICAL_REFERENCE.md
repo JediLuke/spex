@@ -159,6 +159,28 @@ end
 - Performance is critical (minimal overhead needed)
 - No need for business-readable format
 
+### **How the Spex Tag System Works**
+
+When you `use Spex` in a test module, it automatically adds `@moduletag spex: true` to the entire module. This leverages ExUnit's built-in tag filtering system:
+
+```elixir
+defmodule MyApp.IntegrationSpex do
+  use Spex  # This adds @moduletag spex: true automatically
+  
+  spex "user workflow" do
+    # This creates a regular ExUnit test tagged with :spex
+  end
+end
+```
+
+**Running Spex Tests:**
+- `mix test` - Runs all tests EXCEPT those tagged with `:spex` (ExUnit excludes them by default)
+- `mix test --include spex` - Includes tests tagged with `:spex` in addition to regular tests
+- `mix test --only spex` - Runs ONLY tests tagged with `:spex`
+- `mix spex` - Custom task that starts the application and runs spex tests
+
+This design allows spex tests to be excluded by default (since they may require special setup like GUI applications) while still being easily runnable when needed.
+
 ## 📋 **4. REFERENCE** (Information-Oriented)
 
 ### **Complete API Reference**
@@ -182,6 +204,13 @@ end
 - `when_/2` - Define the action being tested
 - `then_/2` - Define expected outcomes
 - `and_/2` - Additional context or cleanup steps
+
+**Note on Step Types:** The `given_`, `when_`, `then_`, and `and_` macros are functionally identical - they all execute code blocks and report their step type to the reporter. The only difference is the label in the output (e.g., "Given: ...", "When: ...", etc.). The naming follows BDD conventions for readability, but you can technically use them in any order. Each macro simply:
+1. Reports the step type and description to `Spex.Reporter`
+2. Executes the provided code block via `Spex.StepExecutor`
+3. Continues to the next step
+
+This design keeps the implementation simple while providing semantic structure for test scenarios.
 
 ##### Manual Mode and Step Control
 

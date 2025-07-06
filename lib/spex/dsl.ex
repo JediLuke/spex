@@ -29,10 +29,12 @@ defmodule Spex.DSL do
       @spex_name unquote(name)
       @spex_opts unquote(opts)
 
-      test "Spex: #{unquote(name)}" do
+      test "Spex: #{unquote(name)}", context do
         Spex.Reporter.start_spex(@spex_name, @spex_opts)
 
         try do
+          # Make ExUnit context available to scenarios
+          var!(exunit_context) = context
           unquote(block)
           Spex.Reporter.spex_passed(@spex_name)
         rescue
@@ -63,9 +65,67 @@ defmodule Spex.DSL do
       end
     end
   end
+  
+  @doc """
+  Defines a scenario with context support.
+
+  Context is passed between steps similar to ExUnit's approach.
+  
+  ## Example
+  
+      scenario "user workflow", context do
+        given_ "a user", context do
+          user = create_user()
+          context = Map.put(context, :user, user)
+        end
+        
+        when_ "they login", context do
+          session = login(context.user)
+          context = Map.put(context, :session, session)
+        end
+        
+        then_ "they see dashboard", context do
+          assert context.session.valid?
+        end
+      end
+  """
+  defmacro scenario(name, context_var, do: block) do
+    quote do
+      Spex.Reporter.start_scenario(unquote(name))
+
+      try do
+        # Use the ExUnit context that comes from setup/setup_all
+        # Convert the context keyword list to a map for easier access
+        var!(unquote(context_var)) = case var!(exunit_context) do
+          context when is_map(context) -> context
+          context when is_list(context) -> Map.new(context)
+          _ -> %{}
+        end
+        unquote(block)
+        Spex.Reporter.scenario_passed(unquote(name))
+      rescue
+        error ->
+          Spex.Reporter.scenario_failed(unquote(name), error)
+          reraise error, __STACKTRACE__
+      end
+    end
+  end
 
   @doc """
   Defines the preconditions for a test scenario.
+  
+  ## Examples
+  
+      # Without context
+      given_ "some setup" do
+        # setup code
+      end
+      
+      # With context (ExUnit style)
+      given_ "some setup", context do
+        data = setup()
+        context = Map.put(context, :data, data)
+      end
   """
   defmacro given_(description, do: block) do
     quote do
@@ -73,6 +133,22 @@ defmodule Spex.DSL do
       
       Spex.StepExecutor.execute_step("Given", unquote(description), fn ->
         unquote(block)
+      end)
+    end
+  end
+  
+  defmacro given_(description, context_var, do: block) do
+    quote do
+      Spex.Reporter.step("Given", unquote(description))
+      
+      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("Given", unquote(description), fn ->
+        var!(unquote(context_var)) = var!(unquote(context_var))
+        result = unquote(block)
+        # Return the context (either explicitly returned or the current context)
+        case result do
+          %{} = new_context -> new_context
+          _ -> var!(unquote(context_var))
+        end
       end)
     end
   end
@@ -89,6 +165,22 @@ defmodule Spex.DSL do
       end)
     end
   end
+  
+  defmacro when_(description, context_var, do: block) do
+    quote do
+      Spex.Reporter.step("When", unquote(description))
+      
+      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("When", unquote(description), fn ->
+        var!(unquote(context_var)) = var!(unquote(context_var))
+        result = unquote(block)
+        # Return the context (either explicitly returned or the current context)
+        case result do
+          %{} = new_context -> new_context
+          _ -> var!(unquote(context_var))
+        end
+      end)
+    end
+  end
 
   @doc """
   Defines the expected outcome.
@@ -99,6 +191,22 @@ defmodule Spex.DSL do
       
       Spex.StepExecutor.execute_step("Then", unquote(description), fn ->
         unquote(block)
+      end)
+    end
+  end
+  
+  defmacro then_(description, context_var, do: block) do
+    quote do
+      Spex.Reporter.step("Then", unquote(description))
+      
+      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("Then", unquote(description), fn ->
+        var!(unquote(context_var)) = var!(unquote(context_var))
+        result = unquote(block)
+        # Return the context (either explicitly returned or the current context)
+        case result do
+          %{} = new_context -> new_context
+          _ -> var!(unquote(context_var))
+        end
       end)
     end
   end
@@ -115,4 +223,25 @@ defmodule Spex.DSL do
       end)
     end
   end
+  
+  defmacro and_(description, context_var, do: block) do
+    quote do
+      Spex.Reporter.step("And", unquote(description))
+      
+      var!(unquote(context_var)) = Spex.StepExecutor.execute_step("And", unquote(description), fn ->
+        var!(unquote(context_var)) = var!(unquote(context_var))
+        result = unquote(block)
+        # Return the context (either explicitly returned or the current context)
+        case result do
+          %{} = new_context -> new_context
+          _ -> var!(unquote(context_var))
+        end
+      end)
+    end
+  end
+
+  # Note: setup and setup_all are available directly from ExUnit.Case
+  # Users can use them directly:
+  #   setup do ... end
+  #   setup_all do ... end
 end
