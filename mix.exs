@@ -53,11 +53,11 @@ defmodule Spex.MixProject do
 
   defp package do
     [
-      name: "spex",
+      name: "sexy_spex",
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,
-        "Documentation" => "https://hexdocs.pm/spex"
+        "Documentation" => "https://hexdocs.pm/sexy_spex"
       },
       maintainers: ["Luke"],
       files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md)

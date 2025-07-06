@@ -17,12 +17,12 @@ Spex is a framework for writing executable specifications that serve as both tes
 
 ## Installation
 
-Add `spex` to your list of dependencies in `mix.exs`:
+Add `sexy_spex` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:spex, "~> 0.1.0"}
+    {:sexy_spex, "~> 0.1.0"}
   ]
 end
 ```
