@@ -20,7 +20,6 @@ defmodule Mix.Tasks.Spex do
 
   ## Options
 
-      --only-spex     Run only spex tests (skip regular ExUnit tests)
       --pattern       File pattern to match (default: test/spex/**/*_spex.exs)
       --verbose       Show detailed output
       --timeout       Test timeout in milliseconds (default: 60000)
@@ -41,7 +40,7 @@ defmodule Mix.Tasks.Spex do
       config :spex,
         manual_mode: false,
         step_delay: 0
-        
+
   Application lifecycle is handled in individual spex files using setup_all blocks.
 
   """
@@ -80,14 +79,15 @@ defmodule Mix.Tasks.Spex do
       pattern = opts[:pattern] || @default_pattern
       Mix.shell().info("No spex files found matching pattern: #{pattern}")
       Mix.shell().info("Try: mix spex --help")
-      return()
+      # Exit early if no files found
+      System.halt(0)
     end
 
     # Configure spex execution
     configure_spex_mode(opts)
 
     Mix.shell().info("🎯 Running #{length(spex_files)} spex file(s)...")
-    
+
     # Run spex tests with ExUnit
     run_tests_with_exunit(spex_files, opts)
   end
@@ -117,18 +117,15 @@ defmodule Mix.Tasks.Spex do
   defp run_tests_with_exunit(spex_files, opts) do
     # Configure ExUnit
     timeout = opts[:timeout] || @default_timeout
-    
+
     exunit_config = [
       colors: [enabled: true],
       formatters: [ExUnit.CLIFormatter],
       timeout: timeout
     ]
 
-    # Include spex tests (always include them since this is the spex command)
-    exunit_config = Keyword.put(exunit_config, :include, [spex: true])
-
-    # Note: We always include spex tests since this is the spex command
-    # The :only_spex option doesn't really apply here
+    # Note: Spex files can only be run via 'mix spex' command
+    # This ensures proper compilation and application lifecycle management
 
     # Enable verbose output if requested
     exunit_config = if opts[:verbose] do
@@ -152,14 +149,18 @@ defmodule Mix.Tasks.Spex do
     end)
 
     # Run the tests
-    case ExUnit.run() do
+    result = ExUnit.run()
+
+    # Handle results and exit immediately to prevent double runs
+    case result do
       %{failures: 0} ->
         Mix.shell().info("✅ All spex passed!")
-        
+        System.halt(0)  # Exit immediately after success
+
       %{failures: failures} when failures > 0 ->
         Mix.shell().error("❌ #{failures} spex failed")
         System.halt(1)
-        
+
       _ ->
         Mix.shell().error("❌ Spex execution encountered errors")
         System.halt(1)
