@@ -5,14 +5,14 @@ defmodule Spex do
   Spex provides a framework for writing executable specifications that serve as
   both tests and living documentation, optimized for AI-driven development workflows.
 
-  ## Example
+  ## Basic Example
 
       defmodule MyApp.UserSpex do
         use Spex
 
         spex "user registration works" do
           scenario "successful registration" do
-            given "valid user data" do
+            given_ "valid user data" do
               user_data = %{email: "test@example.com", password: "secure123"}
               assert valid_user_data?(user_data)
             end
@@ -29,13 +29,44 @@ defmodule Spex do
         end
       end
 
-  ## Configuration
+  ## GUI Application Testing
 
-  Spex can be configured with different adapters for various testing scenarios:
+  For GUI applications, use setup_all blocks to manage application lifecycle:
 
-      config :spex,
-        adapter: Spex.Adapters.ScenicMCP,
-        screenshot_dir: "test/screenshots"
+      defmodule MyApp.GUISpex do
+        use Spex
+
+        setup_all do
+          # Start your application once for all spex
+          Application.ensure_all_started(:my_gui_app)
+          on_exit(fn -> Application.stop(:my_gui_app) end)
+          {:ok, %{port: 9999}}
+        end
+
+        setup do
+          # Reset state before each spex
+          {:ok, %{timestamp: DateTime.utc_now()}}
+        end
+
+        spex "GUI interaction works", context do
+          scenario "text input", context do
+            given_ "empty editor", context do
+              Spex.Adapters.ScenicMCP.take_screenshot("before_typing")
+              context
+            end
+
+            when_ "user types text", context do
+              Spex.Adapters.ScenicMCP.send_text("Hello World")
+              context
+            end
+
+            then_ "text appears", context do
+              Spex.Adapters.ScenicMCP.take_screenshot("after_typing")
+              assert true
+            end
+          end
+        end
+      end
 
   """
 
@@ -48,47 +79,7 @@ defmodule Spex do
 
       @spex_opts unquote(opts)
       @moduletag spex: true
-
-      setup_all do
-        Spex.setup(@spex_opts)
-      end
     end
   end
 
-  @doc """
-  Sets up the spex environment with configuration.
-  """
-  def setup(opts \\ []) do
-    adapter = opts[:adapter] || raise """
-    No adapter specified! You must explicitly choose an adapter when using Spex.
-    
-    Example:
-        use Spex, adapter: Spex.Adapters.ScenicMCP
-    
-    Available adapters:
-    - Spex.Adapters.ScenicMCP - For Scenic GUI applications
-    """
-    
-    # Get adapter defaults and merge with user options
-    config = if function_exported?(adapter, :defaults, 0) do
-      Map.merge(adapter.defaults(), Map.new(opts))
-    else
-      Map.new(opts)
-    end
-    
-    # Set up global configuration for StepExecutor and other components
-    Application.put_env(:spex, :adapter, adapter)
-    Application.put_env(:spex, :config, config)
-    
-    # Initialize the adapter with merged configuration
-    if function_exported?(adapter, :setup, 1) do
-      adapter.setup(config)
-    else
-      if function_exported?(adapter, :setup, 0) do
-        adapter.setup()
-      end
-    end
-    
-    :ok
-  end
 end

@@ -39,9 +39,7 @@ defmodule Spex.StepExecutor do
     end
   end
 
-  @doc """
-  Executes a step in manual mode with user interaction.
-  """
+  # Executes a step in manual mode with user interaction.
   defp execute_manual_step(step_type, description, step_function) do
     IO.puts("")
     IO.puts("  🎯 NEXT STEP: #{step_type} #{description}")
@@ -59,10 +57,8 @@ defmodule Spex.StepExecutor do
     end
   end
 
-  @doc """
-  Executes a step with timing delays based on speed configuration.
-  """
-  defp execute_timed_step(step_type, description, step_function) do
+  # Executes a step with timing delays based on speed configuration.
+  defp execute_timed_step(_step_type, _description, step_function) do
     # Apply pre-step delay if configured
     apply_step_delay()
 
@@ -70,13 +66,8 @@ defmodule Spex.StepExecutor do
     step_function.()
   end
 
-  @doc """
-  Prompts the user for the next action in manual mode.
-
-  Returns:
-  - `:continue` - Proceed with step execution
-  - `:quit` - Exit the test run
-  """
+  # Prompts the user for the next action in manual mode.
+  # Returns: `:continue` - Proceed with step execution, `:quit` - Exit the test run
   defp prompt_manual_action do
     response = IO.gets("  🎮 [ENTER] Continue | [iex] IEx Shell | [q] Quit: ")
 
@@ -100,9 +91,7 @@ defmodule Spex.StepExecutor do
     end
   end
 
-  @doc """
-  Applies step delay based on configured speed.
-  """
+  # Applies step delay based on configured speed.
   defp apply_step_delay do
     delay_ms = Application.get_env(:spex, :step_delay, 0)
 
@@ -111,12 +100,9 @@ defmodule Spex.StepExecutor do
     end
   end
 
-  @doc """
-  Starts an interactive shell for debugging between test steps.
-  
-  User can inspect application state, call functions, take screenshots, etc.
-  Uses a simple evaluation loop that's easier to exit than full IEx.
-  """
+  # Starts an interactive shell for debugging between test steps.
+  # User can inspect application state, call functions, take screenshots, etc.
+  # Uses a simple evaluation loop that's easier to exit than full IEx.
   defp start_interactive_shell do
     IO.puts("")
     IO.puts("  🐚 Starting debug shell...")
