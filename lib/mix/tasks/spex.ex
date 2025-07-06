@@ -96,7 +96,7 @@ defmodule Mix.Tasks.Spex do
 
     # Setup configuration
     config = setup_config(opts)
-    
+
     # Find and load spex files
     spex_files = find_spex_files(files, opts)
 
@@ -115,31 +115,31 @@ defmodule Mix.Tasks.Spex do
 
     # Start application lifecycle
     app_pid = start_application(config)
-    
+
     try do
       # Wait for MCP server to be ready
       wait_for_mcp_server(config)
-      
+
       # Setup screenshot directory
       setup_screenshot_dir(config)
-      
+
       # Manual mode initial prompt
       if config.manual do
         prompt_manual_start(config)
       end
-      
+
       # Configure ExUnit for spex
       configure_exunit(opts, config)
-      
+
       # Load spex files
       load_spex_files(spex_files, config)
-      
+
       # Run the tests
       results = run_spex_tests(spex_files, config)
-      
+
       # Handle results
       handle_results(results, config)
-      
+
     after
       # Cleanup
       cleanup_application(app_pid, config)
@@ -153,10 +153,10 @@ defmodule Mix.Tasks.Spex do
     port = opts[:port] || Application.get_env(:spex, :port, @default_port)
     speed = parse_speed(opts[:speed]) || Application.get_env(:spex, :speed, @default_speed)
     screenshot_dir = Application.get_env(:spex, :screenshot_dir, "test/screenshots")
-    
+
     # Manual mode can be activated by --manual flag OR --speed manual
     manual_mode = opts[:manual] || speed == :manual
-    
+
     %{
       app_path: Path.expand(app_path),
       port: port,
@@ -179,21 +179,35 @@ defmodule Mix.Tasks.Spex do
 
   defp start_application(config) do
     Mix.shell().info("🚀 Starting application at #{config.app_path}...")
-    
+    Mix.shell().info("   🔧 Current Mix.env: #{Mix.env()}")
+
     # Kill any existing process on the port
     cleanup_existing_process(config.port)
-    
-    # Start the application in the background
-    spawn_link(fn ->
-      System.cmd("iex", ["-S", "mix"], 
-        cd: config.app_path,
-        env: [{"MIX_ENV", "test"}],
-        into: IO.stream(:stdio, :line)
-      )
-    end)
-    
-    Mix.shell().info("   ✅ Application started")
-    :app_started
+
+    # Use the same approach as mix test - this is the key!
+    # mix test calls Mix.Task.run("app.start") which properly handles all dependencies
+
+    # First ensure we're in the right app directory
+    original_dir = File.cwd!()
+    File.cd!(config.app_path)
+
+    # For spex, we want to start quillex WITH GUI for full visual testing
+    # The dependency issues are now resolved with Mix.Task.run("app.start")
+    Application.put_env(:quillex, :started_by_flamelex?, false)
+    # Mix.shell().info("   🔧 Set :started_by_flamelex? = #{Application.get_env(:quillex, :started_by_flamelex?)}")
+
+    # Use the same application startup approach as mix test
+    # Mix.shell().info("   🔧 Starting applications using mix test approach...")
+    case Mix.Task.run("app.start") do
+      :ok ->
+        # Mix.shell().info("   ✅ All applications started successfully")
+        File.cd!(original_dir)
+        {:app_started, :quillex}
+      error ->
+        Mix.shell().error("❌ Failed to start applications: #{inspect(error)}")
+        File.cd!(original_dir)
+        System.halt(1)
+    end
   end
 
   defp cleanup_existing_process(port) do
@@ -215,10 +229,10 @@ defmodule Mix.Tasks.Spex do
 
   defp wait_for_mcp_server(config) do
     Mix.shell().info("⏳ Waiting for MCP server on port #{config.port}...")
-    
+
     max_attempts = 30
     attempt = 0
-    
+
     wait_loop(config.port, attempt, max_attempts)
   end
 
@@ -246,7 +260,7 @@ defmodule Mix.Tasks.Spex do
 
   defp configure_exunit(opts, config) do
     timeout = config.timeout
-    
+
     exunit_config = [
       colors: [enabled: true],
       formatters: [ExUnit.CLIFormatter],
@@ -276,7 +290,7 @@ defmodule Mix.Tasks.Spex do
 
   defp load_spex_files(spex_files, config) do
     Mix.shell().info("📝 Loading #{length(spex_files)} spex file(s)...")
-    
+
     Enum.each(spex_files, fn file ->
       try do
         Mix.shell().info("   📄 Loading #{Path.basename(file)}")
@@ -297,33 +311,33 @@ defmodule Mix.Tasks.Spex do
     end
 
     apply_speed_settings(config.speed)
-    
+
     # Run the tests
     ExUnit.run()
   end
 
   defp prompt_manual_start(config) do
     Mix.shell().info("""
-    
+
     🎮 MANUAL MODE ACTIVATED
     ========================
-    
+
     The application is now running and ready for interactive testing.
     You will be prompted before each action to:
-    
+
     ⏸️  Press ENTER to proceed with the next step
-    📸 Type 's' + ENTER to take a screenshot  
+    📸 Type 's' + ENTER to take a screenshot
     🔍 Type 'i' + ENTER to inspect viewport
     ❌ Type 'q' + ENTER to quit
-    
+
     This allows you to observe each step in detail and see exactly
     what the AI is doing to your application.
-    
+
     📍 Application: #{config.app_path}
     🌐 Port: #{config.port}
     📸 Screenshots: #{config.screenshot_dir}
     """)
-    
+
     Mix.shell().prompt("Press ENTER when ready to start the spex tests...")
   end
 
@@ -334,7 +348,7 @@ defmodule Mix.Tasks.Spex do
       :fast -> 100
       :manual -> 0  # No automatic delay in manual mode
     end
-    
+
     # Store delay for adapters to use
     Application.put_env(:spex, :step_delay, delay_ms)
     Application.put_env(:spex, :manual_mode, speed == :manual)
@@ -344,43 +358,41 @@ defmodule Mix.Tasks.Spex do
     case results do
       %{failures: 0} ->
         Mix.shell().info("✅ All spex passed!")
-        
+
         if config.watch do
           Mix.shell().info("👁️  Watch mode enabled - GUI will remain open")
           Mix.shell().info("   Press Ctrl+C to exit")
-          
+
           # Keep alive for observation
           receive do
             :shutdown -> :ok
           end
         end
-        
+
       %{failures: failures} when failures > 0 ->
         Mix.shell().error("❌ #{failures} spex failed")
-        
+
         if config.watch do
           Mix.shell().info("👁️  Watch mode - GUI remains open for debugging")
           Mix.shell().info("   Press Ctrl+C to exit")
-          
+
           receive do
             :shutdown -> :ok
           end
         end
-        
+
         System.halt(1)
-        
+
       _ ->
         Mix.shell().error("❌ Spex execution encountered errors")
         System.halt(1)
     end
   end
 
-  defp cleanup_application(_app_ref, config) do
+  defp cleanup_application({:app_started, app_name}, config) do
     Mix.shell().info("🧹 Cleaning up application...")
-    
-    # Clean up any remaining processes on the port
-    cleanup_existing_process(config.port)
-    
+    :application.stop(app_name)
+
     Mix.shell().info("   ✅ Cleanup complete")
   end
 
@@ -393,5 +405,10 @@ defmodule Mix.Tasks.Spex do
     files
     |> Enum.filter(&File.exists?/1)
     |> Enum.sort()
+  end
+
+  defp app_already_running?(app_name) do
+    Application.started_applications()
+    |> Enum.any?(fn {name, _, _} -> name == app_name end)
   end
 end
