@@ -23,7 +23,7 @@ This guide provides solutions to common problems and tasks when using SexySpex. 
 ```elixir
 defp deps do
   [
-    {:spex, path: "../spex", only: [:test, :dev]},
+    {:sexy_spex, path: "../spex", only: [:test, :dev]},
     {:scenic_mcp, path: "../scenic_mcp", only: [:dev, :test]},
     # ... your other deps
   ]
@@ -46,9 +46,9 @@ mkdir -p test/screenshots
 3. **Create basic config file `test/spex/spex_helper.exs`:**
 ```elixir
 # Common setup for all spex files
-Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
-Application.put_env(:spex, :port, 9999)
-Application.put_env(:spex, :screenshot_dir, "test/screenshots")
+Application.put_env(:sexy_spex, :adapter, SexySpex.Adapters.ScenicMCP)
+Application.put_env(:sexy_spex, :port, 9999)
+Application.put_env(:sexy_spex, :screenshot_dir, "test/screenshots")
 
 File.mkdir_p!("test/screenshots")
 ```
@@ -88,9 +88,9 @@ end
 ```elixir
 # In your spex file or config
 setup_all do
-  Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
-  Application.put_env(:spex, :port, 8888)  # Custom port
-  Application.put_env(:spex, :screenshot_dir, "tmp/screenshots")  # Custom directory
+  Application.put_env(:sexy_spex, :adapter, SexySpex.Adapters.ScenicMCP)
+  Application.put_env(:sexy_spex, :port, 8888)  # Custom port
+  Application.put_env(:sexy_spex, :screenshot_dir, "tmp/screenshots")  # Custom directory
   
   File.mkdir_p!("tmp/screenshots")
   :ok
@@ -662,9 +662,9 @@ mix spex --pattern "**/integration/*" # End-to-end workflows
 # test/spex/shared_config.exs
 defmodule SpexConfig do
   def setup_common do
-    Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
-    Application.put_env(:spex, :port, 9999)
-    Application.put_env(:spex, :screenshot_dir, "test/screenshots")
+    Application.put_env(:sexy_spex, :adapter, SexySpex.Adapters.ScenicMCP)
+    Application.put_env(:sexy_spex, :port, 9999)
+    Application.put_env(:sexy_spex, :screenshot_dir, "test/screenshots")
     
     File.mkdir_p!("test/screenshots")
   end

@@ -11,7 +11,7 @@
 1. **Add to your project:**
 ```elixir
 # mix.exs
-{:spex, path: "../spex", only: [:test, :dev]}
+{:sexy_spex, path: "../spex", only: [:test, :dev]}
 ```
 
 2. **Create your first spex:**
@@ -326,7 +326,7 @@ mix spex --verbose --timeout 120000       # Verbose with 2min timeout
 
 **Application Configuration:**
 ```elixir
-config :spex,
+config :sexy_spex,
   adapter: SexySpex.Adapters.ScenicMCP,   # Default: SexySpex.Adapters.Default
   screenshot_dir: "test/screenshots", # Default: "."
   port: 9999                          # Default: 9999 (for ScenicMCP)
@@ -335,8 +335,8 @@ config :spex,
 **Runtime Configuration:**
 ```elixir
 # In test setup
-Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
-Application.put_env(:spex, :screenshot_dir, "tmp/screenshots")
+Application.put_env(:sexy_spex, :adapter, SexySpex.Adapters.ScenicMCP)
+Application.put_env(:sexy_spex, :screenshot_dir, "tmp/screenshots")
 ```
 
 ### **Error Reference**
@@ -345,7 +345,7 @@ Application.put_env(:spex, :screenshot_dir, "tmp/screenshots")
 
 1. **`could not load spex.ex. Reason: enoent`**
    - **Cause:** Wrong path in `Code.require_file/2`
-   - **Solution:** Check relative paths, use `{:spex, path: ".."}` in deps
+   - **Solution:** Check relative paths, use `{:sexy_spex, path: ".."}` in deps
 
 2. **`No Scenic MCP server detected on port 9999`**
    - **Cause:** Scenic application not running with MCP enabled

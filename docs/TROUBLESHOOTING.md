@@ -190,7 +190,7 @@ setup_all do
 end
 
 # Or use absolute paths
-Application.put_env(:spex, :screenshot_dir, Path.expand("test/screenshots"))
+Application.put_env(:sexy_spex, :screenshot_dir, Path.expand("test/screenshots"))
 ```
 
 #### Screenshot files are corrupted/unreadable

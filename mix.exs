@@ -6,7 +6,7 @@ defmodule SexySpex.MixProject do
 
   def project do
     [
-      app: :spex,
+      app: :sexy_spex,
       version: @version,
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,

@@ -24,13 +24,13 @@ defmodule SexySpex.StepExecutor do
   ## Configuration
 
   Reads configuration from application environment:
-  - `:spex, :manual_mode` - Boolean, enables manual stepping
-  - `:spex, :step_delay` - Integer, delay in ms between steps
-  - `:spex, :speed` - Atom, execution speed (:slow, :normal, :fast, :manual)
+  - `:sexy_spex, :manual_mode` - Boolean, enables manual stepping
+  - `:sexy_spex, :step_delay` - Integer, delay in ms between steps
+  - `:sexy_spex, :speed` - Atom, execution speed (:slow, :normal, :fast, :manual)
   """
   def execute_step(step_type, description, step_function) do
     # Check if manual mode is enabled
-    manual_mode = Application.get_env(:spex, :manual_mode, false)
+    manual_mode = Application.get_env(:sexy_spex, :manual_mode, false)
 
     if manual_mode do
       execute_manual_step(step_type, description, step_function)
@@ -93,7 +93,7 @@ defmodule SexySpex.StepExecutor do
 
   # Applies step delay based on configured speed.
   defp apply_step_delay do
-    delay_ms = Application.get_env(:spex, :step_delay, 0)
+    delay_ms = Application.get_env(:sexy_spex, :step_delay, 0)
 
     if delay_ms > 0 do
       Process.sleep(delay_ms)

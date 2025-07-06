@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Spex do
 
   You can configure spex behavior in your config files:
 
-      config :spex,
+      config :sexy_spex,
         manual_mode: false,
         step_delay: 0
 
@@ -108,8 +108,8 @@ defmodule Mix.Tasks.Spex do
   defp configure_spex_mode(opts) do
     # Set manual mode if requested
     if opts[:manual] do
-      Application.put_env(:spex, :manual_mode, true)
-      Application.put_env(:spex, :step_delay, 0)
+      Application.put_env(:sexy_spex, :manual_mode, true)
+      Application.put_env(:sexy_spex, :step_delay, 0)
       Mix.shell().info("🎮 Manual mode enabled - you'll be prompted at each step")
     end
   end

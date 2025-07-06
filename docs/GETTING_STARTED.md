@@ -69,7 +69,7 @@ Add to your `mix.exs`:
 ```elixir
 defp deps do
   [
-    {:spex, path: "../spex", only: [:test, :dev]},
+    {:sexy_spex, path: "../spex", only: [:test, :dev]},
     {:scenic_mcp, path: "../scenic_mcp", only: [:dev, :test]},
     # ... your other deps
   ]
@@ -119,9 +119,9 @@ defmodule MyApp.HelloWorldSpex do
   
   # Configure for Scenic MCP testing
   setup_all do
-    Application.put_env(:spex, :adapter, SexySpex.Adapters.ScenicMCP)
-    Application.put_env(:spex, :port, 9999)
-    Application.put_env(:spex, :screenshot_dir, "test/screenshots")
+    Application.put_env(:sexy_spex, :adapter, SexySpex.Adapters.ScenicMCP)
+    Application.put_env(:sexy_spex, :port, 9999)
+    Application.put_env(:sexy_spex, :screenshot_dir, "test/screenshots")
     
     File.mkdir_p!("test/screenshots")
     :ok
