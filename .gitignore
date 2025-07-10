@@ -1,3 +1,9 @@
 
 /deps/
 /_build/
+
+# Generated documentation
+/doc/
+
+# Build artifacts
+*.tar
