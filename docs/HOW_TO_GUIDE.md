@@ -287,7 +287,11 @@ end
 
 **Solution:**
 
-Use context passing to share data between steps, similar to ExUnit's setup callbacks:
+Use context passing to share data between steps, similar to ExUnit's setup callbacks.
+
+**Important:** SexySpex requires explicit context handling. All steps with context must return either:
+- `:ok` - Keep the context unchanged
+- `{:ok, context}` - Pass an updated context to the next step
 
 ```elixir
 spex "User workflow with data sharing" do
@@ -298,8 +302,12 @@ spex "User workflow with data sharing" do
       ScenicMCP.send_key("enter")
       
       # Store data in context for later steps
-      context = Map.put(context, :document_name, document_name)
-      context = Map.put(context, :creation_time, DateTime.utc_now())
+      updated_context = context
+        |> Map.put(:document_name, document_name)
+        |> Map.put(:creation_time, DateTime.utc_now())
+      
+      # Must explicitly return the updated context
+      {:ok, updated_context}
     end
     
     when_ "content is added to the document", context do
@@ -308,7 +316,7 @@ spex "User workflow with data sharing" do
       ScenicMCP.send_text(content)
       
       # Add more data to context
-      context = Map.put(context, :content, content)
+      {:ok, Map.put(context, :content, content)}
     end
     
     then_ "the document can be saved with correct data", context do
@@ -319,6 +327,9 @@ spex "User workflow with data sharing" do
       assert String.length(context.content) > 0
       
       {:ok, _} = ScenicMCP.take_screenshot("saved_#{context.document_name}")
+      
+      # No context changes needed, just return :ok
+      :ok
     end
   end
 end
@@ -349,6 +360,97 @@ end
 - **Cleaner Tests**: No need to re-fetch or recreate data
 - **Better Assertions**: Can verify data across the entire scenario
 - **Documentation**: Context shows what data the test cares about
+
+### How do I handle context return values correctly?
+
+**Problem:** Getting `ArgumentError` about "Step must return :ok or {:ok, context}" when running spex.
+
+**Solution:**
+
+SexySpex enforces **explicit context handling** to prevent accidental context loss. Every step with context must return one of these values:
+
+#### ✅ Valid Return Values
+
+**`:ok` - Keep context unchanged:**
+```elixir
+given_ "application is running", context do
+  assert MyApp.started?()
+  :ok  # Context passes through unchanged
+end
+```
+
+**`{:ok, context}` - Update context:**
+```elixir
+when_ "user creates a document", context do
+  document = create_document("test.txt")
+  {:ok, Map.put(context, :document, document)}
+end
+```
+
+**`{:ok, updated_context}` - Multiple updates:**
+```elixir
+given_ "test data is prepared", context do
+  user = create_user()
+  session = login(user)
+  
+  updated = context
+    |> Map.put(:user, user)
+    |> Map.put(:session, session)
+    |> Map.put(:timestamp, DateTime.utc_now())
+  
+  {:ok, updated}
+end
+```
+
+#### ❌ Invalid Return Values (Will Raise Error)
+
+```elixir
+# These will ALL fail with ArgumentError:
+
+given_ "bad example 1", context do
+  create_user()  # Returns %User{}, not :ok or {:ok, context}
+end
+
+when_ "bad example 2", context do
+  true  # Returns boolean, not valid format
+end
+
+then_ "bad example 3", context do
+  Map.put(context, :key, "value")  # Returns map directly
+end
+
+and_ "bad example 4", context do
+  {:error, "something went wrong"}  # Wrong tuple format
+end
+```
+
+#### 🔧 Migration Guide
+
+**Old (implicit) style:**
+```elixir
+given_ "setup", context do
+  data = prepare_data()
+  Map.put(context, :data, data)  # ❌ This will now fail
+end
+```
+
+**New (explicit) style:**
+```elixir
+given_ "setup", context do
+  data = prepare_data()
+  {:ok, Map.put(context, :data, data)}  # ✅ Explicit return
+end
+```
+
+**For steps that don't modify context:**
+```elixir
+then_ "verify result", context do
+  assert context.data.status == :ok
+  # Old: nothing returned (worked by accident)
+  # New: explicit :ok required
+  :ok
+end
+```
 
 ### How do I test complex user workflows?
 

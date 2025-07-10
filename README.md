@@ -15,6 +15,7 @@ SexySpex is a **behavior-driven development (BDD)** framework for **Elixir** tha
 - **AI-Driven Testing**: Manual mode, semantic helpers, and step-by-step execution for AI systems
 - **GUI Testing**: Built-in helpers for **Scenic** applications and visual testing
 - **ExUnit Foundation**: Built on ExUnit for reliability with enhanced BDD features
+- **Explicit Context Handling**: Prevents accidental data loss with required `:ok` or `{:ok, context}` returns
 - **Gherkin-style Syntax**: Natural language scenarios for business stakeholders
 - **Test Automation**: Automated acceptance testing with continuous validation
 
@@ -57,13 +58,13 @@ defmodule MyApp.UserRegistrationSpex do
           name: "Test User"
         }
         assert valid_registration_data?(user_data)
-        Map.put(context, :user_data, user_data)
+        {:ok, Map.put(context, :user_data, user_data)}
       end
 
       when_ "user submits registration", context do
         {:ok, user} = MyApp.Users.register(context.user_data)
         assert user.email == context.user_data.email
-        Map.put(context, :user, user)
+        {:ok, Map.put(context, :user, user)}
       end
 
       then_ "user account is created and can login", context do
@@ -71,6 +72,7 @@ defmodule MyApp.UserRegistrationSpex do
           context.user_data.email, 
           context.user_data.password
         )
+        :ok
       end
     end
   end

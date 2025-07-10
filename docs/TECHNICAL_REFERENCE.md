@@ -210,7 +210,12 @@ This design allows spex tests to be excluded by default (since they may require 
 2. Executes the provided code block via `SexySpex.StepExecutor`
 3. Continues to the next step
 
-This design keeps the implementation simple while providing semantic structure for test scenarios.
+**Context Handling:** When using the 2-arity versions (with context), steps must return:
+- `:ok` - Keep context unchanged
+- `{:ok, context}` - Pass updated context to next step
+- Any other return value raises `ArgumentError` with helpful guidance
+
+This design keeps the implementation simple while providing semantic structure for test scenarios and preventing accidental context loss.
 
 ##### Manual Mode and Step Control
 
