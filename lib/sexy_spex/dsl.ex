@@ -140,14 +140,25 @@ defmodule SexySpex.DSL do
   defmacro given_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("Given", unquote(description))
-      
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Return the context (either explicitly returned or the current context)
+        # Require explicit return values: :ok or {:ok, context}
         case result do
-          %{} = new_context -> new_context
-          _ -> var!(unquote(context_var))
+          :ok -> 
+            var!(unquote(context_var))  # Keep context unchanged
+          {:ok, %{} = new_context} -> 
+            new_context  # Use new context
+          other -> 
+            raise ArgumentError, """
+            Step must return :ok or {:ok, context}.
+            Got: #{inspect(other)}
+            
+            Valid examples:
+              :ok                                    # Keep context unchanged
+              {:ok, context}                         # Return updated context  
+              {:ok, Map.put(context, :key, value)}   # Return modified context
+            """
         end
       end)
     end
@@ -173,10 +184,22 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Return the context (either explicitly returned or the current context)
+        # Require explicit return values: :ok or {:ok, context}
         case result do
-          %{} = new_context -> new_context
-          _ -> var!(unquote(context_var))
+          :ok -> 
+            var!(unquote(context_var))  # Keep context unchanged
+          {:ok, %{} = new_context} -> 
+            new_context  # Use new context
+          other -> 
+            raise ArgumentError, """
+            Step must return :ok or {:ok, context}.
+            Got: #{inspect(other)}
+            
+            Valid examples:
+              :ok                                    # Keep context unchanged
+              {:ok, context}                         # Return updated context  
+              {:ok, Map.put(context, :key, value)}   # Return modified context
+            """
         end
       end)
     end
@@ -202,10 +225,22 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Return the context (either explicitly returned or the current context)
+        # Require explicit return values: :ok or {:ok, context}
         case result do
-          %{} = new_context -> new_context
-          _ -> var!(unquote(context_var))
+          :ok -> 
+            var!(unquote(context_var))  # Keep context unchanged
+          {:ok, %{} = new_context} -> 
+            new_context  # Use new context
+          other -> 
+            raise ArgumentError, """
+            Step must return :ok or {:ok, context}.
+            Got: #{inspect(other)}
+            
+            Valid examples:
+              :ok                                    # Keep context unchanged
+              {:ok, context}                         # Return updated context  
+              {:ok, Map.put(context, :key, value)}   # Return modified context
+            """
         end
       end)
     end
@@ -231,10 +266,22 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Return the context (either explicitly returned or the current context)
+        # Require explicit return values: :ok or {:ok, context}
         case result do
-          %{} = new_context -> new_context
-          _ -> var!(unquote(context_var))
+          :ok -> 
+            var!(unquote(context_var))  # Keep context unchanged
+          {:ok, %{} = new_context} -> 
+            new_context  # Use new context
+          other -> 
+            raise ArgumentError, """
+            Step must return :ok or {:ok, context}.
+            Got: #{inspect(other)}
+            
+            Valid examples:
+              :ok                                    # Keep context unchanged
+              {:ok, context}                         # Return updated context  
+              {:ok, Map.put(context, :key, value)}   # Return modified context
+            """
         end
       end)
     end
