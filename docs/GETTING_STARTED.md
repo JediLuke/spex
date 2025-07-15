@@ -184,7 +184,7 @@ Sets up the initial state for your test.
 
 ```elixir
 given "an empty text editor" do
-  {:ok, _} = ScenicMCP.send_key("a", ["ctrl"])  # Select all
+  {:ok, _} = ScenicMCP.send_key("a", [:ctrl])  # Select all
   {:ok, _} = ScenicMCP.send_key("delete")       # Delete
   {:ok, _} = ScenicMCP.take_screenshot("empty_editor")
 end
@@ -397,7 +397,7 @@ end
 spex "Complete user workflow" do
   scenario "User creates and saves document" do
     given "clean application state" do
-      {:ok, _} = ScenicMCP.send_key("n", ["ctrl"])  # New file
+      {:ok, _} = ScenicMCP.send_key("n", [:ctrl])  # New file
       {:ok, _} = ScenicMCP.take_screenshot("new_file")
     end
     
@@ -407,7 +407,7 @@ spex "Complete user workflow" do
     end
     
     and_ "saves the file" do
-      {:ok, _} = ScenicMCP.send_key("s", ["ctrl"])
+      {:ok, _} = ScenicMCP.send_key("s", [:ctrl])
       {:ok, _} = ScenicMCP.take_screenshot("file_saved")
     end
     

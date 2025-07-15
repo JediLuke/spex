@@ -51,6 +51,9 @@ defmodule Mix.Tasks.Spex do
   @default_timeout 60_000
 
   def run(args) do
+    # Ensure we're running in test environment for spex
+    Mix.env(:test)
+    
     {opts, files, _} = OptionParser.parse(args,
       switches: [
         only_spex: :boolean,

@@ -60,7 +60,7 @@ spex "file save functionality" do
     end
     
     when_ "user saves with Ctrl+S" do
-      ScenicMCP.send_key("s", ["ctrl"])
+      ScenicMCP.send_key("s", [:ctrl])
       # Handle save dialog...
     end
     

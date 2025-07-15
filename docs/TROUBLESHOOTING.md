@@ -329,7 +329,7 @@ mix spex --sequential
 # 3. Add cleanup between scenarios
 setup do
   # Reset app state
-  {:ok, _} = ScenicMCP.send_key("n", ["ctrl"])
+  {:ok, _} = ScenicMCP.send_key("n", [:ctrl])
   :ok
 end
 ```

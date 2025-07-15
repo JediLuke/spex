@@ -249,8 +249,8 @@ defmodule MyApp.FeatureSpex do
   setup do
     # Reset to clean state for each spex
     alias SexySpex.Adapters.ScenicMCP
-    {:ok, _} = ScenicMCP.send_key("n", ["ctrl"])  # New file
-    {:ok, _} = ScenicMCP.send_key("a", ["ctrl"])  # Select all
+    {:ok, _} = ScenicMCP.send_key("n", [:ctrl])  # New file
+    {:ok, _} = ScenicMCP.send_key("a", [:ctrl])  # Select all
     {:ok, _} = ScenicMCP.send_key("delete")       # Clear
     
     {:ok, %{timestamp: DateTime.utc_now()}}
@@ -321,7 +321,7 @@ spex "User workflow with data sharing" do
     
     then_ "the document can be saved with correct data", context do
       # Verify using data from all previous steps
-      ScenicMCP.send_key("s", ["ctrl"])
+      ScenicMCP.send_key("s", [:ctrl])
       
       assert String.contains?(context.document_name, "MyDocument")
       assert String.length(context.content) > 0
@@ -486,7 +486,7 @@ spex "Complete user onboarding workflow" do
     and_ "uses core application features" do
       # Test main app functionality
       {:ok, _} = ScenicMCP.send_text("My first document")
-      {:ok, _} = ScenicMCP.send_key("s", ["ctrl"])
+      {:ok, _} = ScenicMCP.send_key("s", [:ctrl])
       {:ok, _} = ScenicMCP.take_screenshot("document_saved")
     end
     
@@ -776,7 +776,7 @@ defmodule SpexConfig do
     
     # Common wait patterns
     assert ScenicMCP.wait_for_app(9999, 10)
-    {:ok, _} = ScenicMCP.send_key("n", ["ctrl"])  # New file
+    {:ok, _} = ScenicMCP.send_key("n", [:ctrl])  # New file
     Process.sleep(1000)  # Let UI settle
   end
 end
@@ -934,7 +934,7 @@ spex "Performance validation" do
       
       {:ok, _} = ScenicMCP.send_text("Performance test document")
       {:ok, _} = ScenicMCP.send_key("enter")
-      {:ok, _} = ScenicMCP.send_key("s", ["ctrl"])
+      {:ok, _} = ScenicMCP.send_key("s", [:ctrl])
       
       end_time = :os.system_time(:millisecond)
       @response_time = end_time - start_time
