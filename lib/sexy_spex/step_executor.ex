@@ -58,9 +58,12 @@ defmodule SexySpex.StepExecutor do
   end
 
   # Executes a step with timing delays based on speed configuration.
-  defp execute_timed_step(_step_type, _description, step_function) do
+  defp execute_timed_step(step_type, description, step_function) do
     # Apply pre-step delay if configured
     apply_step_delay()
+
+    # Show step info for slow/medium speeds
+    show_step_info(step_type, description)
 
     # Execute the step
     step_function.()
@@ -88,6 +91,15 @@ defmodule SexySpex.StepExecutor do
 
       _ ->
         :continue
+    end
+  end
+
+  # Shows step information for slower speeds
+  defp show_step_info(step_type, description) do
+    delay_ms = Application.get_env(:sexy_spex, :step_delay, 0)
+    
+    if delay_ms > 0 do
+      IO.puts("  🎯 #{step_type} #{description}")
     end
   end
 

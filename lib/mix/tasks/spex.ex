@@ -24,6 +24,8 @@ defmodule Mix.Tasks.Spex do
       --verbose       Show detailed output
       --timeout       Test timeout in milliseconds (default: 60000)
       --manual        Interactive manual mode - step through each action
+      --speed         Execution speed: fast (default), medium, slow
+      --trace         Enable ExUnit trace mode (shows test execution details)
 
   ## Examples
 
@@ -32,6 +34,10 @@ defmodule Mix.Tasks.Spex do
       mix spex --pattern "**/integration_*_spex.exs"
       mix spex --only-spex --verbose
       mix spex --manual           # Interactive step-by-step mode
+      mix spex --speed slow       # Slower automatic execution
+      mix spex --speed medium --verbose  # Medium speed with detailed output
+      mix spex --trace            # Show detailed test execution
+      mix spex test/spex/file.exs --trace
 
   ## Configuration
 
@@ -43,6 +49,23 @@ defmodule Mix.Tasks.Spex do
 
   Application lifecycle is handled in individual spex files using setup_all blocks.
 
+  ## Important: Test Environment Setup
+
+  To ensure spex runs in the test environment with proper module compilation,
+  add this to your project's mix.exs:
+
+      def project do
+        [
+          # ... other config
+          preferred_cli_env: [
+            spex: :test
+          ]
+        ]
+      end
+
+  This ensures that `mix spex` always runs in the test environment and compiles
+  modules with test-specific code paths (e.g., test/support directories).
+
   """
 
   use Mix.Task
@@ -52,7 +75,15 @@ defmodule Mix.Tasks.Spex do
 
   def run(args) do
     # Ensure we're running in test environment for spex
-    Mix.env(:test)
+    # Note: This task should have preferred_cli_env set to :test in mix.exs
+    # of projects using spex to ensure proper compilation
+    
+    # Compile the project to ensure test environment modules are loaded
+    Mix.Task.run("compile")
+    
+    # Start the application like mix test does
+    # This ensures all applications and their dependencies are started
+    Mix.Task.run("app.start")
     
     {opts, files, _} = OptionParser.parse(args,
       switches: [
@@ -61,12 +92,16 @@ defmodule Mix.Tasks.Spex do
         verbose: :boolean,
         timeout: :integer,
         help: :boolean,
-        manual: :boolean
+        manual: :boolean,
+        speed: :string,
+        trace: :boolean
       ],
       aliases: [
         h: :help,
         v: :verbose,
-        m: :manual
+        m: :manual,
+        s: :speed,
+        t: :trace
       ]
     )
 
@@ -114,7 +149,27 @@ defmodule Mix.Tasks.Spex do
       Application.put_env(:sexy_spex, :manual_mode, true)
       Application.put_env(:sexy_spex, :step_delay, 0)
       Mix.shell().info("🎮 Manual mode enabled - you'll be prompted at each step")
+    else
+      # Configure speed if provided
+      configure_speed(opts[:speed])
     end
+  end
+
+  defp configure_speed(nil), do: configure_speed("fast")  # Default to fast
+  defp configure_speed("fast") do
+    Application.put_env(:sexy_spex, :step_delay, 0)
+  end
+  defp configure_speed("medium") do
+    Application.put_env(:sexy_spex, :step_delay, 1000)  # 1 second
+    Mix.shell().info("⏱️  Medium speed mode - 1s delays between steps")
+  end
+  defp configure_speed("slow") do
+    Application.put_env(:sexy_spex, :step_delay, 2500)  # 2.5 seconds
+    Mix.shell().info("🐌 Slow speed mode - 2.5s delays between steps")
+  end
+  defp configure_speed(invalid) do
+    Mix.shell().error("Invalid speed: #{invalid}. Valid options: fast, medium, slow")
+    System.halt(1)
   end
 
   defp run_tests_with_exunit(spex_files, opts) do
@@ -132,6 +187,13 @@ defmodule Mix.Tasks.Spex do
 
     # Enable verbose output if requested
     exunit_config = if opts[:verbose] do
+      Keyword.put(exunit_config, :trace, true)
+    else
+      exunit_config
+    end
+
+    # Enable trace mode if requested (can be used independently of verbose)
+    exunit_config = if opts[:trace] do
       Keyword.put(exunit_config, :trace, true)
     else
       exunit_config

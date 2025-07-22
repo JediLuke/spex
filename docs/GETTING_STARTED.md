@@ -252,18 +252,16 @@ mix spex --pattern "**/login_*_spex.exs"
 ### Speed Control
 
 ```bash
-# Fast execution (100ms delays)
+# Fast execution (no delays) - default
 mix spex --speed fast
 
-# Normal speed (500ms delays) - default
-mix spex --speed normal
+# Medium speed (1s delays between steps)
+mix spex --speed medium
 
-# Slow for observation (2000ms delays)
+# Slow for observation (2.5s delays between steps)
 mix spex --speed slow
 
 # Manual step-by-step control
-mix spex --speed manual
-# or
 mix spex --manual
 ```
 
@@ -292,8 +290,8 @@ mix spex --app-path ../my-other-app --port 8888
 # Manual mode with verbose output for debugging
 mix spex --manual --verbose --watch
 
-# Fast automated run of specific pattern
-mix spex --pattern "**/smoke_*" --speed fast --verbose
+# Medium speed run of specific pattern
+mix spex --pattern "**/smoke_*" --speed medium --verbose
 ```
 
 ## Speed Modes & Manual Control
@@ -302,9 +300,9 @@ mix spex --pattern "**/smoke_*" --speed fast --verbose
 
 | Mode | Delay | Use Case |
 |------|-------|----------|
-| `fast` | 100ms | CI/automated testing |
-| `normal` | 500ms | Regular development |
-| `slow` | 2000ms | Observation/debugging |
+| `fast` | 0ms | CI/automated testing (default) |
+| `medium` | 1s | Regular development |
+| `slow` | 2.5s | Observation/debugging |
 
 ### Manual Mode - Complete Control
 
@@ -480,7 +478,8 @@ Create spex for:
 
 ### 4. Integrate with Development Workflow
 - Run fast spex in CI: `mix spex --speed fast`
-- Use manual mode for debugging: `mix spex --manual --watch`
+- Use medium speed for development: `mix spex --speed medium --verbose`
+- Use manual mode for debugging: `mix spex --manual`
 - Create specific test patterns: `mix spex --pattern "**/integration_*"`
 
 ### 5. Advanced Features
