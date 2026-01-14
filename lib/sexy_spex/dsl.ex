@@ -22,6 +22,18 @@ defmodule SexySpex.DSL do
     * `:description` - Human-readable description of the specification
     * `:tags` - List of atoms for categorizing the specification
     * `:context` - Map of additional context information
+    * `:fail_on_error_logs` - Fail the test if any error logs are emitted (default: true)
+
+  ## Error Log Detection
+
+  By default, spex will fail if any error-level logs are emitted during test execution,
+  even if no assertion failed. This catches crashes and errors that might go unnoticed.
+
+  To disable for a specific spex:
+
+      spex "my test", fail_on_error_logs: false do
+        # This test won't fail on error logs
+      end
 
   """
   defmacro spex(name, opts \\ [], do: block) do
@@ -32,13 +44,31 @@ defmodule SexySpex.DSL do
       test "Spex: #{unquote(name)}", context do
         SexySpex.Reporter.start_spex(@spex_name, @spex_opts)
 
+        # Start error capture and clear any previous errors
+        fail_on_errors = Keyword.get(@spex_opts, :fail_on_error_logs, true)
+        if fail_on_errors do
+          SexySpex.ErrorCapture.start()
+          SexySpex.ErrorCapture.clear()
+        end
+
         try do
           # Make ExUnit context available to scenarios
           var!(exunit_context) = context
           unquote(block)
+
+          # Check for error logs if enabled
+          if fail_on_errors and SexySpex.ErrorCapture.has_errors?() do
+            error_msg = SexySpex.ErrorCapture.format_errors()
+            SexySpex.ErrorCapture.clear()
+            SexySpex.Reporter.spex_failed(@spex_name, %{message: error_msg})
+            raise ExUnit.AssertionError, message: error_msg
+          end
+
           SexySpex.Reporter.spex_passed(@spex_name)
         rescue
           error ->
+            # Clear errors on failure to avoid double-reporting
+            if fail_on_errors, do: SexySpex.ErrorCapture.clear()
             SexySpex.Reporter.spex_failed(@spex_name, error)
             reraise error, __STACKTRACE__
         end

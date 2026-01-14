@@ -14,6 +14,7 @@ SexySpex is a **behavior-driven development (BDD)** framework for **Elixir** tha
 - **Living Documentation**: Tests that generate human and AI-readable documentation
 - **AI-Driven Testing**: Manual mode, semantic helpers, and step-by-step execution for AI systems
 - **GUI Testing**: Built-in helpers for **Scenic** applications and visual testing
+- **Error Log Detection**: Automatic failure on error logs - catches crashes even without assertions
 - **ExUnit Foundation**: Built on ExUnit for reliability with enhanced BDD features
 - **Explicit Context Handling**: Prevents accidental data loss with required `:ok` or `{:ok, context}` returns
 - **Gherkin-style Syntax**: Natural language scenarios for business stakeholders

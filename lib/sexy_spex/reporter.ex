@@ -40,7 +40,22 @@ defmodule SexySpex.Reporter do
   def spex_failed(name, error) do
     IO.puts("")
     IO.puts("❌ Spex failed: #{name}")
-    IO.puts("   Error: #{Exception.message(error)}")
+    IO.puts("   Error: #{format_error(error)}")
+  end
+
+  # Handle exception structs
+  defp format_error(%{__exception__: true} = exception) do
+    Exception.message(exception)
+  end
+
+  # Handle plain maps with :message key (from error capture)
+  defp format_error(%{message: message}) when is_binary(message) do
+    message
+  end
+
+  # Fallback for any other value
+  defp format_error(other) do
+    inspect(other)
   end
 
   @doc """
@@ -63,7 +78,7 @@ defmodule SexySpex.Reporter do
   """
   def scenario_failed(name, error) do
     IO.puts("  ❌ Scenario failed: #{name}")
-    IO.puts("     Error: #{Exception.message(error)}")
+    IO.puts("     Error: #{format_error(error)}")
     IO.puts("")
   end
 

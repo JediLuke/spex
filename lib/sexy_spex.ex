@@ -69,6 +69,7 @@ defmodule SexySpex do
   | Target Use | AI-driven GUI testing | General testing |
   | Manual Mode | ✅ Built-in | ❌ Not available |
   | App Lifecycle | ✅ Helpers provided | Manual setup |
+  | Error Log Detection | ✅ Automatic | ❌ Manual |
 
   ### Integration with Scenic Applications
 
@@ -150,6 +151,49 @@ defmodule SexySpex do
 
   **Important**: SexySpex files cannot be run via `mix test`. This ensures proper
   compilation and application lifecycle management for AI-driven testing.
+
+  ## Error Log Detection
+
+  SexySpex automatically captures error logs during test execution and fails the test
+  if any errors are logged, even if no assertion failed. This catches:
+
+  - GenServer crashes and terminations
+  - FunctionClauseErrors and other runtime errors
+  - Any `:error`, `:critical`, `:alert`, or `:emergency` level logs
+
+  This is enabled by default. When errors are detected, you'll see output like:
+
+      ❌ 2 error(s) logged during test execution:
+        • [error] GenServer #PID<0.1234.0> terminating
+        • [error] ** (FunctionClauseError) no function clause matching...
+
+  ### Disabling Error Detection
+
+  To disable error detection for a specific spex (e.g., when testing error handling):
+
+      spex "error handling works", fail_on_error_logs: false do
+        scenario "handles invalid input" do
+          # This test expects errors to be logged
+        end
+      end
+
+  ### Manual Error Capture
+
+  You can also use the error capture module directly:
+
+      # Start capturing
+      SexySpex.ErrorCapture.start()
+      SexySpex.ErrorCapture.clear()
+
+      # ... do something ...
+
+      # Check for errors
+      if SexySpex.ErrorCapture.has_errors?() do
+        IO.puts(SexySpex.ErrorCapture.format_errors())
+      end
+
+      # Get raw error list
+      errors = SexySpex.ErrorCapture.get_errors()
 
   """
 
