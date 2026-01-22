@@ -143,7 +143,7 @@ defmodule SexySpex do
       # Run all spex files
       mix spex
 
-      # Run specific spex file  
+      # Run specific spex file
       mix spex test/spex/my_app_spex.exs
 
       # Run in manual mode (step-by-step)
@@ -203,6 +203,12 @@ defmodule SexySpex do
       use ExUnit.Case, async: false
       import SexySpex.DSL
       require Logger
+
+      # Register module attributes for givens
+      Module.register_attribute(__MODULE__, :sexy_spex_givens, accumulate: true)
+      Module.register_attribute(__MODULE__, :sexy_spex_imported_givens, accumulate: false)
+
+      @before_compile SexySpex.DSL
 
       @spex_opts unquote(opts)
     end

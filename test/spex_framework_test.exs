@@ -1,7 +1,7 @@
 defmodule SexySpex.FrameworkTest do
   @moduledoc """
   Comprehensive tests for SexySpex framework functionality.
-  
+
   Tests the core features that matter:
   - DSL macros are available and work
   - Context passing between steps
@@ -26,14 +26,14 @@ defmodule SexySpex.FrameworkTest do
         # Test basic assertion and context
         assert context.app_name == "spex_test"
         assert context.shared_data == "available_to_all"
-        Map.put(context, :initial_value, 10)
+        {:ok, Map.put(context, :initial_value, 10)}
       end
 
       when_ "we modify context data", context do
         # Test context flow between steps
         assert context.initial_value == 10
         result = context.initial_value * 2
-        Map.put(context, :computed_value, result)
+        {:ok, Map.put(context, :computed_value, result)}
       end
 
       then_ "context data persists correctly", context do
@@ -41,6 +41,7 @@ defmodule SexySpex.FrameworkTest do
         assert context.initial_value == 10
         assert context.computed_value == 20
         assert Map.has_key?(context, :test_run_time)
+        :ok
       end
     end
   end
@@ -80,6 +81,7 @@ defmodule SexySpex.FrameworkTest do
         # Verify setup_all data is available
         assert context.shared_data == "available_to_all"
         assert context.app_name == "spex_test"
+        :ok
       end
 
       when_ "setup has run for this spex", context do
@@ -87,12 +89,14 @@ defmodule SexySpex.FrameworkTest do
         assert Map.has_key?(context, :test_run_time)
         time_diff = DateTime.diff(DateTime.utc_now(), context.test_run_time)
         assert time_diff < 5  # Should be very recent
+        :ok
       end
 
       then_ "both contexts are merged correctly", context do
         # Verify we have both setup_all and setup data
         assert context.shared_data == "available_to_all"  # from setup_all
         assert Map.has_key?(context, :test_run_time)      # from setup
+        :ok
       end
     end
   end
