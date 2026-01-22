@@ -820,9 +820,187 @@ end
 
 ## Advanced Patterns
 
-### How do I create reusable spex components?
+### How do I create reusable given statements?
 
-**Problem:** Avoiding duplication across similar spex.
+**Problem:** Same setup code is duplicated across multiple scenarios and spex files.
+
+**Solution: Use atom-based givens**
+
+SexySpex allows you to define reusable given statements at the module level and reference them by atom:
+
+```elixir
+defmodule MyApp.UserSpex do
+  use SexySpex
+
+  # Define reusable givens at module level
+  given :logged_in_user do
+    user = %{id: 1, name: "Test User", email: "test@example.com"}
+    {:ok, %{user: user}}
+  end
+
+  given :admin_privileges do
+    {:ok, Map.put(context, :role, :admin)}
+  end
+
+  given :empty_database do
+    MyApp.Repo.delete_all(MyApp.User)
+    :ok
+  end
+
+  spex "User dashboard" do
+    scenario "admin sees all users", context do
+      # Reference givens by atom - context is passed automatically
+      given_ :logged_in_user
+      given_ :admin_privileges
+
+      then_ "admin data is available", context do
+        assert context.user.name == "Test User"
+        assert context.role == :admin
+        :ok
+      end
+    end
+
+    scenario "regular user view", context do
+      given_ :logged_in_user  # Reuse the same given
+
+      then_ "user data is available", context do
+        assert context.user != nil
+        :ok
+      end
+    end
+  end
+end
+```
+
+**Key behaviors:**
+- Givens returning `{:ok, %{key: value}}` are **merged** into the existing context
+- Givens returning `:ok` keep the context unchanged
+- Givens can access the current context via the `context` variable
+- Multiple givens can be chained - each one builds on the previous context
+
+### How do I share givens across multiple spex files?
+
+**Problem:** Need the same setup code in different spex modules.
+
+**Solution: Create a shared givens module**
+
+1. **Create a shared givens module:**
+```elixir
+# test/spex/support/shared_givens.ex
+defmodule MyApp.SharedGivens do
+  use SexySpex.Givens
+
+  given :logged_in_user do
+    {:ok, %{user: %{id: 1, name: "Test User"}}}
+  end
+
+  given :with_test_data do
+    {:ok, %{
+      users: [%{id: 1}, %{id: 2}],
+      products: [%{id: 1, name: "Widget"}]
+    }}
+  end
+
+  given :clean_state do
+    # Reset application state
+    MyApp.reset_all()
+    :ok
+  end
+end
+```
+
+2. **Import in your spex files:**
+```elixir
+# test/spex/user_spex.exs
+Code.require_file("support/shared_givens.ex", __DIR__)
+
+defmodule MyApp.UserSpex do
+  use SexySpex
+  import_givens MyApp.SharedGivens
+
+  # You can also define local givens that override or extend shared ones
+  given :local_setup do
+    {:ok, %{local: true}}
+  end
+
+  spex "User features" do
+    scenario "with shared setup", context do
+      given_ :logged_in_user    # From SharedGivens
+      given_ :with_test_data    # From SharedGivens
+      given_ :local_setup       # Local to this module
+
+      then_ "all data available", context do
+        assert context.user != nil
+        assert context.users != nil
+        assert context.local == true
+        :ok
+      end
+    end
+  end
+end
+```
+
+3. **Use in another spex file:**
+```elixir
+# test/spex/product_spex.exs
+Code.require_file("support/shared_givens.ex", __DIR__)
+
+defmodule MyApp.ProductSpex do
+  use SexySpex
+  import_givens MyApp.SharedGivens
+
+  spex "Product features" do
+    scenario "with same shared setup", context do
+      given_ :logged_in_user    # Same given, reused
+      given_ :with_test_data
+
+      then_ "products available", context do
+        assert length(context.products) > 0
+        :ok
+      end
+    end
+  end
+end
+```
+
+### How do I mix atom givens with inline givens?
+
+**Problem:** Some setup is reusable, but you also need scenario-specific setup.
+
+**Solution:**
+
+```elixir
+defmodule MyApp.MixedSpex do
+  use SexySpex
+
+  given :base_user do
+    {:ok, %{user: %{id: 1, name: "Test User"}}}
+  end
+
+  spex "Mixed setup approaches" do
+    scenario "combining reusable and inline", context do
+      # Reusable given
+      given_ :base_user
+
+      # Inline given for scenario-specific setup
+      given_ "specific document for this test", context do
+        doc = %{id: 42, title: "Test Doc", owner_id: context.user.id}
+        {:ok, Map.put(context, :document, doc)}
+      end
+
+      then_ "both are available", context do
+        assert context.user.id == 1
+        assert context.document.owner_id == context.user.id
+        :ok
+      end
+    end
+  end
+end
+```
+
+### How do I create reusable scenario macros?
+
+**Problem:** Need to reuse entire scenarios, not just givens.
 
 **Solution:**
 
