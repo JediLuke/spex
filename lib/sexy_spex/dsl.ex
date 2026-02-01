@@ -133,6 +133,11 @@ defmodule SexySpex.DSL do
 
         result =
           Enum.find_value(imported, fn mod ->
+            # Ensure the module is loaded before checking function_exported?
+            # This is needed because modules compiled during mix compile may not
+            # be loaded into the VM when running via mix spex
+            Code.ensure_loaded(mod)
+
             if function_exported?(mod, :__givens__, 0) do
               mod_givens = mod.__givens__()
 
