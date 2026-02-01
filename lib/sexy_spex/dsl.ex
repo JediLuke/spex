@@ -4,7 +4,172 @@ defmodule SexySpex.DSL do
 
   Provides macros for structuring specifications in a readable, executable format
   following the Given-When-Then pattern.
+
+  ## Reusable Given Statements
+
+  You can define reusable given statements at the module level using atoms:
+
+      defmodule MyApp.UserSpex do
+        use SexySpex
+
+        # Define a reusable given
+        given :logged_in_user do
+          user = create_user()
+          {:ok, %{user: user}}
+        end
+
+        # With context access
+        given :admin_privileges do
+          {:ok, Map.put(context, :admin, true)}
+        end
+
+        spex "User dashboard" do
+          scenario "admin sees all users", context do
+            given_ :logged_in_user   # Uses registered given
+            given_ :admin_privileges
+
+            when_ "viewing dashboard", context do
+              # context.user and context.admin are available
+            end
+          end
+        end
+      end
+
+  ## Sharing Givens Across Modules
+
+  Create a shared givens module:
+
+      defmodule MyApp.SharedGivens do
+        use SexySpex.Givens
+
+        given :logged_in_user do
+          {:ok, %{user: create_user()}}
+        end
+      end
+
+  Then import in your spex files:
+
+      defmodule MyApp.SomeSpex do
+        use SexySpex
+        import_givens MyApp.SharedGivens
+
+        spex "..." do
+          scenario "...", context do
+            given_ :logged_in_user  # From SharedGivens
+          end
+        end
+      end
   """
+
+  @doc """
+  Registers a reusable given statement that can be invoked by atom.
+
+  The block should return `:ok` or `{:ok, context_updates}`.
+  Context is available via the `context` variable.
+
+  ## Examples
+
+      given :valid_user do
+        {:ok, %{user: %{name: "Test", email: "test@example.com"}}}
+      end
+
+      given :authenticated do
+        token = authenticate(context.user)
+        {:ok, Map.put(context, :token, token)}
+      end
+  """
+  defmacro given(name, do: block) when is_atom(name) do
+    quote do
+      @sexy_spex_givens {unquote(name), unquote(Macro.escape(block))}
+    end
+  end
+
+  @doc """
+  Imports givens from another module.
+
+  ## Example
+
+      defmodule MyApp.SomeSpex do
+        use SexySpex
+        import_givens MyApp.SharedGivens
+      end
+  """
+  defmacro import_givens(module) do
+    quote do
+      @sexy_spex_imported_givens unquote(module)
+    end
+  end
+
+  @doc false
+  defmacro __before_compile__(_env) do
+    quote do
+      @doc false
+      def __givens__ do
+        @sexy_spex_givens
+        |> Enum.reverse()
+        |> Keyword.new(fn {name, block} -> {name, block} end)
+      end
+
+      @doc false
+      def __imported_givens_modules__ do
+        case @sexy_spex_imported_givens do
+          nil -> []
+          modules -> List.wrap(modules)
+        end
+      end
+    end
+  end
+
+  @doc false
+  def __execute_given__(module, name, context) do
+    givens = module.__givens__()
+
+    case Keyword.fetch(givens, name) do
+      {:ok, block} ->
+        execute_given_block(block, context)
+
+      :error ->
+        imported = module.__imported_givens_modules__()
+
+        result =
+          Enum.find_value(imported, fn mod ->
+            if function_exported?(mod, :__givens__, 0) do
+              mod_givens = mod.__givens__()
+
+              case Keyword.fetch(mod_givens, name) do
+                {:ok, block} -> {:found, block}
+                :error -> nil
+              end
+            end
+          end)
+
+        case result do
+          {:found, block} ->
+            execute_given_block(block, context)
+
+          nil ->
+            raise ArgumentError, """
+            No given registered with name #{inspect(name)}.
+
+            Make sure you have defined it with:
+
+                given #{inspect(name)} do
+                  # setup code
+                  {:ok, %{key: value}}
+                end
+
+            Or imported it from another module with:
+
+                import_givens MyModule
+            """
+        end
+    end
+  end
+
+  defp execute_given_block(block, context) do
+    {result, _binding} = Code.eval_quoted(block, [context: context], __ENV__)
+    result
+  end
 
   @doc """
   Defines a specification.
@@ -95,25 +260,25 @@ defmodule SexySpex.DSL do
       end
     end
   end
-  
+
   @doc """
   Defines a scenario with context support.
 
   Context is passed between steps similar to ExUnit's approach.
-  
+
   ## Example
-  
+
       scenario "user workflow", context do
         given_ "a user", context do
           user = create_user()
           context = Map.put(context, :user, user)
         end
-        
+
         when_ "they login", context do
           session = login(context.user)
           context = Map.put(context, :session, session)
         end
-        
+
         then_ "they see dashboard", context do
           assert context.session.valid?
         end
@@ -143,30 +308,60 @@ defmodule SexySpex.DSL do
 
   @doc """
   Defines the preconditions for a test scenario.
-  
+
   ## Examples
-  
+
+      # Using a registered given (atom)
+      given_ :logged_in_user
+
       # Without context
       given_ "some setup" do
         # setup code
       end
-      
+
       # With context (ExUnit style)
       given_ "some setup", context do
         data = setup()
         context = Map.put(context, :data, data)
       end
   """
+  defmacro given_(name) when is_atom(name) do
+    quote do
+      SexySpex.Reporter.step("Given", unquote(name))
+
+      var!(context) =
+        SexySpex.StepExecutor.execute_step("Given", unquote(name), fn ->
+          var!(context) = var!(context)
+          result = SexySpex.DSL.__execute_given__(__MODULE__, unquote(name), var!(context))
+
+          case result do
+            :ok ->
+              var!(context)
+
+            {:ok, %{} = new_context} ->
+              # Merge new context into existing context
+              Map.merge(var!(context), new_context)
+
+            other ->
+              raise ArgumentError, """
+              Given #{inspect(unquote(name))} must return :ok or {:ok, context}.
+              Got: #{inspect(other)}
+              """
+          end
+        end)
+    end
+  end
+
   defmacro given_(description, do: block) do
     quote do
       SexySpex.Reporter.step("Given", unquote(description))
-      
+
       SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
         unquote(block)
       end)
     end
   end
-  
+
   defmacro given_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("Given", unquote(description))
@@ -175,18 +370,18 @@ defmodule SexySpex.DSL do
         result = unquote(block)
         # Require explicit return values: :ok or {:ok, context}
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
+          {:ok, %{} = new_context} ->
             new_context  # Use new context
-          other -> 
+          other ->
             raise ArgumentError, """
             Step must return :ok or {:ok, context}.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
+              {:ok, context}                         # Return updated context
               {:ok, Map.put(context, :key, value)}   # Return modified context
             """
         end
@@ -200,34 +395,34 @@ defmodule SexySpex.DSL do
   defmacro when_(description, do: block) do
     quote do
       SexySpex.Reporter.step("When", unquote(description))
-      
+
       SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
         unquote(block)
       end)
     end
   end
-  
+
   defmacro when_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("When", unquote(description))
-      
+
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Require explicit return values: :ok or {:ok, context}
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
+          {:ok, %{} = new_context} ->
             new_context  # Use new context
-          other -> 
+          other ->
             raise ArgumentError, """
             Step must return :ok or {:ok, context}.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
+              {:ok, context}                         # Return updated context
               {:ok, Map.put(context, :key, value)}   # Return modified context
             """
         end
@@ -241,34 +436,34 @@ defmodule SexySpex.DSL do
   defmacro then_(description, do: block) do
     quote do
       SexySpex.Reporter.step("Then", unquote(description))
-      
+
       SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
         unquote(block)
       end)
     end
   end
-  
+
   defmacro then_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("Then", unquote(description))
-      
+
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Require explicit return values: :ok or {:ok, context}
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
+          {:ok, %{} = new_context} ->
             new_context  # Use new context
-          other -> 
+          other ->
             raise ArgumentError, """
             Step must return :ok or {:ok, context}.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
+              {:ok, context}                         # Return updated context
               {:ok, Map.put(context, :key, value)}   # Return modified context
             """
         end
@@ -282,34 +477,34 @@ defmodule SexySpex.DSL do
   defmacro and_(description, do: block) do
     quote do
       SexySpex.Reporter.step("And", unquote(description))
-      
+
       SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
         unquote(block)
       end)
     end
   end
-  
+
   defmacro and_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("And", unquote(description))
-      
+
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
         # Require explicit return values: :ok or {:ok, context}
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
+          {:ok, %{} = new_context} ->
             new_context  # Use new context
-          other -> 
+          other ->
             raise ArgumentError, """
             Step must return :ok or {:ok, context}.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
+              {:ok, context}                         # Return updated context
               {:ok, Map.put(context, :key, value)}   # Return modified context
             """
         end
