@@ -21,7 +21,7 @@ defmodule SexySpex.FrameworkTest do
   end
 
   spex "Core DSL functionality works" do
-    scenario "spex/scenario/given/when/then macros are available", context do
+    scenario "spex/scenario/given/when/then macros are available" do
       given_ "we can use DSL macros", context do
         # Test basic assertion and context
         assert context.app_name == "spex_test"
@@ -76,7 +76,7 @@ defmodule SexySpex.FrameworkTest do
   end
 
   spex "Setup lifecycle works correctly" do
-    scenario "setup_all and setup provide expected context", context do
+    scenario "setup_all and setup provide expected context" do
       given_ "setup_all has run once", context do
         # Verify setup_all data is available
         assert context.shared_data == "available_to_all"
@@ -96,6 +96,60 @@ defmodule SexySpex.FrameworkTest do
         # Verify we have both setup_all and setup data
         assert context.shared_data == "available_to_all"  # from setup_all
         assert Map.has_key?(context, :test_run_time)      # from setup
+        :ok
+      end
+    end
+  end
+
+  spex "Context isolation between steps" do
+    scenario "each step receives context from previous step, not outer scope" do
+      given_ "we set initial context", context do
+        # Start with a known value
+        {:ok, Map.put(context, :step1_value, 100)}
+      end
+
+      given_ "we modify context in second given", context do
+        # Should see step1_value from previous step
+        assert context.step1_value == 100
+        # Add our own value
+        {:ok, Map.merge(context, %{step2_value: 200, step1_value: 999})}
+      end
+
+      when_ "we check context in when block", context do
+        # Should see modified step1_value (999) not original (100)
+        assert context.step1_value == 999
+        assert context.step2_value == 200
+        {:ok, Map.put(context, :when_value, 300)}
+      end
+
+      then_ "context threads correctly through all steps", context do
+        # Verify all values are present and correctly threaded
+        assert context.step1_value == 999  # Modified by step2
+        assert context.step2_value == 200
+        assert context.when_value == 300
+        :ok
+      end
+    end
+
+    scenario "context parameter refers to inner binding not outer scope" do
+      given_ "we establish baseline context", context do
+        {:ok, Map.put(context, :baseline, "original")}
+      end
+
+      then_ "modifications in block use inner context", context do
+        # This tests that `context` in the block refers to the step's
+        # local binding, not the scenario's outer scope
+        local_context = Map.put(context, :local_mod, true)
+        assert local_context.baseline == "original"
+        assert local_context.local_mod == true
+        # Return unchanged - the local_mod should NOT leak
+        :ok
+      end
+
+      then_ "previous step's local modifications don't leak", context do
+        # local_mod from previous then_ should not be present
+        refute Map.has_key?(context, :local_mod)
+        assert context.baseline == "original"
         :ok
       end
     end

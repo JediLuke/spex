@@ -10,7 +10,7 @@ defmodule SexySpex.GivensErrorSpex do
   end
 
   spex "Given return values work correctly" do
-    scenario "given returning :ok keeps context unchanged", context do
+    scenario "given returning :ok keeps context unchanged" do
       given_ "set initial data", context do
         {:ok, Map.put(context, :initial, "data")}
       end
@@ -23,7 +23,7 @@ defmodule SexySpex.GivensErrorSpex do
       end
     end
 
-    scenario "given returning {:ok, map} merges into context", context do
+    scenario "given returning {:ok, map} merges into context" do
       given_ "set initial data", context do
         {:ok, Map.put(context, :initial, "data")}
       end

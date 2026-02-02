@@ -15,7 +15,7 @@ defmodule SexySpex.GivensSpex do
   end
 
   spex "Atom-based givens work" do
-    scenario "single given by atom", context do
+    scenario "single given by atom" do
       given_ :test_user
 
       then_ "context has user", context do
@@ -25,7 +25,7 @@ defmodule SexySpex.GivensSpex do
       end
     end
 
-    scenario "chained givens by atom", context do
+    scenario "chained givens by atom" do
       given_ :test_user
       given_ :with_timestamp
       given_ :admin_role
@@ -38,7 +38,7 @@ defmodule SexySpex.GivensSpex do
       end
     end
 
-    scenario "mixed atom and inline givens", context do
+    scenario "mixed atom and inline givens" do
       given_ :test_user
 
       given_ "additional setup", context do

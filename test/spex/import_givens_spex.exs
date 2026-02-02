@@ -11,7 +11,7 @@ defmodule SexySpex.ImportGivensSpex do
   end
 
   spex "Imported givens work" do
-    scenario "can use imported given", context do
+    scenario "can use imported given" do
       given_ :shared_user
 
       then_ "context has shared user", context do
@@ -21,7 +21,7 @@ defmodule SexySpex.ImportGivensSpex do
       end
     end
 
-    scenario "can chain imported and local givens", context do
+    scenario "can chain imported and local givens" do
       given_ :shared_user
       given_ :shared_config
       given_ :local_data
