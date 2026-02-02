@@ -24,12 +24,13 @@ defmodule SexySpex.DSL do
         end
 
         spex "User dashboard" do
-          scenario "admin sees all users", context do
+          scenario "admin sees all users" do
             given_ :logged_in_user   # Uses registered given
             given_ :admin_privileges
 
             when_ "viewing dashboard", context do
               # context.user and context.admin are available
+              :ok
             end
           end
         end
@@ -176,6 +177,27 @@ defmodule SexySpex.DSL do
     result
   end
 
+  @doc false
+  # Process step result - extracted to function to avoid type inference warnings
+  def __process_step_result__(result, current_context) do
+    case result do
+      :ok ->
+        current_context
+      {:ok, %{} = new_context} ->
+        new_context
+      other ->
+        raise ArgumentError, """
+        Step must return :ok or {:ok, context}.
+        Got: #{inspect(other)}
+
+        Valid examples:
+          :ok                                    # Keep context unchanged
+          {:ok, context}                         # Return updated context
+          {:ok, Map.put(context, :key, value)}   # Return modified context
+        """
+    end
+  end
+
   @doc """
   Defines a specification.
 
@@ -239,7 +261,7 @@ defmodule SexySpex.DSL do
           error ->
             # Clear errors on failure to avoid double-reporting
             if fail_on_errors, do: SexySpex.ErrorCapture.clear()
-            SexySpex.Reporter.spex_failed(@spex_name, error)
+            SexySpex.Reporter.spex_failed(@spex_name, error, __STACKTRACE__)
             reraise error, __STACKTRACE__
         end
       end
@@ -250,62 +272,45 @@ defmodule SexySpex.DSL do
   Defines a scenario within a specification.
 
   Scenarios group related Given-When-Then steps together.
+  Context from ExUnit setup/setup_all is implicitly available as `context`.
+
+  ## Example
+
+      scenario "user workflow" do
+        given_ "a user", context do
+          user = create_user()
+          {:ok, Map.put(context, :user, user)}
+        end
+
+        when_ "they login", context do
+          session = login(context.user)
+          {:ok, Map.put(context, :session, session)}
+        end
+
+        then_ "they see dashboard", context do
+          assert context.session.valid?
+          :ok
+        end
+      end
   """
   defmacro scenario(name, do: block) do
     quote do
       SexySpex.Reporter.start_scenario(unquote(name))
 
       try do
-        unquote(block)
-        SexySpex.Reporter.scenario_passed(unquote(name))
-      rescue
-        error ->
-          SexySpex.Reporter.scenario_failed(unquote(name), error)
-          reraise error, __STACKTRACE__
-      end
-    end
-  end
-
-  @doc """
-  Defines a scenario with context support.
-
-  Context is passed between steps similar to ExUnit's approach.
-
-  ## Example
-
-      scenario "user workflow", context do
-        given_ "a user", context do
-          user = create_user()
-          context = Map.put(context, :user, user)
-        end
-
-        when_ "they login", context do
-          session = login(context.user)
-          context = Map.put(context, :session, session)
-        end
-
-        then_ "they see dashboard", context do
-          assert context.session.valid?
-        end
-      end
-  """
-  defmacro scenario(name, context_var, do: block) do
-    quote do
-      SexySpex.Reporter.start_scenario(unquote(name))
-
-      try do
-        # Use the ExUnit context that comes from setup/setup_all
-        # Convert the context keyword list to a map for easier access
-        var!(unquote(context_var)) = case var!(exunit_context) do
-          context when is_map(context) -> context
-          context when is_list(context) -> Map.new(context)
+        # Use internal variable name to avoid shadowing user's `context`
+        var!(spex_context) = case var!(exunit_context) do
+          ctx when is_map(ctx) -> ctx
+          ctx when is_list(ctx) -> Map.new(ctx)
           _ -> %{}
         end
         unquote(block)
+        # Suppress "unused variable" warning for final step's assignment
+        _ = var!(spex_context)
         SexySpex.Reporter.scenario_passed(unquote(name))
       rescue
         error ->
-          SexySpex.Reporter.scenario_failed(unquote(name), error)
+          SexySpex.Reporter.scenario_failed(unquote(name), error, __STACKTRACE__)
           reraise error, __STACKTRACE__
       end
     end
@@ -334,18 +339,17 @@ defmodule SexySpex.DSL do
     quote do
       SexySpex.Reporter.step("Given", unquote(name))
 
-      var!(context) =
-        SexySpex.StepExecutor.execute_step("Given", unquote(name), fn ->
-          var!(context) = var!(context)
-          result = SexySpex.DSL.__execute_given__(__MODULE__, unquote(name), var!(context))
+      var!(spex_context) =
+        SexySpex.StepExecutor.execute_step("Given", unquote(name), var!(spex_context), fn context ->
+          result = SexySpex.DSL.__execute_given__(__MODULE__, unquote(name), context)
 
           case result do
             :ok ->
-              var!(context)
+              context
 
             {:ok, %{} = new_context} ->
               # Merge new context into existing context
-              Map.merge(var!(context), new_context)
+              Map.merge(context, new_context)
 
             other ->
               raise ArgumentError, """
@@ -370,27 +374,15 @@ defmodule SexySpex.DSL do
   defmacro given_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("Given", unquote(description))
-      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
-        var!(unquote(context_var)) = var!(unquote(context_var))
-        result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
-        case result do
-          :ok ->
-            var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} ->
-            new_context  # Use new context
-          other ->
-            raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
-            Got: #{inspect(other)}
-
-            Valid examples:
-              :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context
-              {:ok, Map.put(context, :key, value)}   # Return modified context
-            """
+      # Pass context as function argument (like ExUnit setup)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "Given",
+        unquote(description),
+        var!(spex_context),
+        fn unquote(context_var) ->
+          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
         end
-      end)
+      )
     end
   end
 
@@ -410,28 +402,15 @@ defmodule SexySpex.DSL do
   defmacro when_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("When", unquote(description))
-
-      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
-        var!(unquote(context_var)) = var!(unquote(context_var))
-        result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
-        case result do
-          :ok ->
-            var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} ->
-            new_context  # Use new context
-          other ->
-            raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
-            Got: #{inspect(other)}
-
-            Valid examples:
-              :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context
-              {:ok, Map.put(context, :key, value)}   # Return modified context
-            """
+      # Pass context as function argument (like ExUnit setup)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "When",
+        unquote(description),
+        var!(spex_context),
+        fn unquote(context_var) ->
+          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
         end
-      end)
+      )
     end
   end
 
@@ -451,28 +430,15 @@ defmodule SexySpex.DSL do
   defmacro then_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("Then", unquote(description))
-
-      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
-        var!(unquote(context_var)) = var!(unquote(context_var))
-        result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
-        case result do
-          :ok ->
-            var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} ->
-            new_context  # Use new context
-          other ->
-            raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
-            Got: #{inspect(other)}
-
-            Valid examples:
-              :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context
-              {:ok, Map.put(context, :key, value)}   # Return modified context
-            """
+      # Pass context as function argument (like ExUnit setup)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "Then",
+        unquote(description),
+        var!(spex_context),
+        fn unquote(context_var) ->
+          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
         end
-      end)
+      )
     end
   end
 
@@ -492,28 +458,15 @@ defmodule SexySpex.DSL do
   defmacro and_(description, context_var, do: block) do
     quote do
       SexySpex.Reporter.step("And", unquote(description))
-
-      var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
-        var!(unquote(context_var)) = var!(unquote(context_var))
-        result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
-        case result do
-          :ok ->
-            var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} ->
-            new_context  # Use new context
-          other ->
-            raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
-            Got: #{inspect(other)}
-
-            Valid examples:
-              :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context
-              {:ok, Map.put(context, :key, value)}   # Return modified context
-            """
+      # Pass context as function argument (like ExUnit setup)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "And",
+        unquote(description),
+        var!(spex_context),
+        fn unquote(context_var) ->
+          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
         end
-      end)
+      )
     end
   end
 
