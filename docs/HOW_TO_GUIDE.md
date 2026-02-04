@@ -295,7 +295,7 @@ Use context passing to share data between steps, similar to ExUnit's setup callb
 
 ```elixir
 spex "User workflow with data sharing" do
-  scenario "Creating and using a document", context do
+  scenario "Creating and using a document" do
     given_ "a new document is created", context do
       document_name = "MyDocument_#{:rand.uniform(1000)}"
       ScenicMCP.send_text(document_name)
@@ -848,7 +848,7 @@ defmodule MyApp.UserSpex do
   end
 
   spex "User dashboard" do
-    scenario "admin sees all users", context do
+    scenario "admin sees all users" do
       # Reference givens by atom - context is passed automatically
       given_ :logged_in_user
       given_ :admin_privileges
@@ -860,7 +860,7 @@ defmodule MyApp.UserSpex do
       end
     end
 
-    scenario "regular user view", context do
+    scenario "regular user view" do
       given_ :logged_in_user  # Reuse the same given
 
       then_ "user data is available", context do
@@ -924,7 +924,7 @@ defmodule MyApp.UserSpex do
   end
 
   spex "User features" do
-    scenario "with shared setup", context do
+    scenario "with shared setup" do
       given_ :logged_in_user    # From SharedGivens
       given_ :with_test_data    # From SharedGivens
       given_ :local_setup       # Local to this module
@@ -950,7 +950,7 @@ defmodule MyApp.ProductSpex do
   import_givens MyApp.SharedGivens
 
   spex "Product features" do
-    scenario "with same shared setup", context do
+    scenario "with same shared setup" do
       given_ :logged_in_user    # Same given, reused
       given_ :with_test_data
 
@@ -978,7 +978,7 @@ defmodule MyApp.MixedSpex do
   end
 
   spex "Mixed setup approaches" do
-    scenario "combining reusable and inline", context do
+    scenario "combining reusable and inline" do
       # Reusable given
       given_ :base_user
 

@@ -55,7 +55,7 @@ defmodule SexySpex.DSL do
         import_givens MyApp.SharedGivens
 
         spex "..." do
-          scenario "...", context do
+          scenario "..." do
             given_ :logged_in_user  # From SharedGivens
           end
         end
@@ -319,20 +319,23 @@ defmodule SexySpex.DSL do
   @doc """
   Defines the preconditions for a test scenario.
 
+  Steps must return `:ok` (keeps context unchanged) or `{:ok, context}` (updates context).
+
   ## Examples
 
       # Using a registered given (atom)
       given_ :logged_in_user
 
-      # Without context
+      # Without context - just run setup code
       given_ "some setup" do
-        # setup code
+        # setup code that doesn't need context
+        :ok
       end
 
-      # With context (ExUnit style)
+      # With context - return {:ok, updated_context}
       given_ "some setup", context do
         data = setup()
-        context = Map.put(context, :data, data)
+        {:ok, Map.put(context, :data, data)}
       end
   """
   defmacro given_(name) when is_atom(name) do

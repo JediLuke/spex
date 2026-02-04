@@ -235,7 +235,7 @@ end
 
 **Using registered givens:**
 ```elixir
-scenario "example", context do
+scenario "example" do
   given_ :logged_in_user      # Executes registered given, merges result into context
   given_ :with_admin_role     # Can access context.user from previous given
   given_ :reset_database      # Returns :ok, context unchanged
@@ -268,7 +268,7 @@ defmodule MyApp.SomeSpex do
   import_givens MyApp.SharedGivens
 
   spex "..." do
-    scenario "...", context do
+    scenario "..." do
       given_ :test_user  # From SharedGivens
     end
   end

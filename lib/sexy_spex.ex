@@ -121,16 +121,16 @@ defmodule SexySpex do
           {:ok, %{timestamp: DateTime.utc_now()}}
         end
 
-        spex "GUI interaction works", context do
-          scenario "application connectivity", context do
+        spex "GUI interaction works" do
+          scenario "application connectivity" do
             given_ "application is running", context do
               assert SexySpex.Helpers.application_running?(:my_gui_app)
-              context
+              :ok
             end
 
             then_ "we can connect to MCP server", context do
               assert SexySpex.Helpers.can_connect_to_scenic_mcp?(context.port)
-              context
+              :ok
             end
           end
         end

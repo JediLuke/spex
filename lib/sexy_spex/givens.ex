@@ -31,7 +31,7 @@ defmodule SexySpex.Givens do
         import_givens MyApp.SharedGivens
 
         spex "User management" do
-          scenario "admin can view users", context do
+          scenario "admin can view users" do
             given_ :admin_user
             given_ :empty_database
 
