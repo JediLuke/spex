@@ -20,7 +20,7 @@ defmodule SexySpex.Givens do
 
         given :empty_database do
           MyApp.Repo.delete_all(MyApp.User)
-          :ok
+          {:ok, %{}}
         end
       end
 
@@ -56,7 +56,7 @@ defmodule SexySpex.Givens do
   @doc """
   Registers a reusable given statement.
 
-  The block should return `:ok` or `{:ok, context_updates}`.
+  The block must return `{:ok, context_updates}`.
   Access the current context via `context` variable.
 
   ## Examples
@@ -71,19 +71,37 @@ defmodule SexySpex.Givens do
       end
   """
   defmacro given(name, do: block) when is_atom(name) do
+    func_name = :"__sexy_spex_given_#{name}__"
+
     quote do
-      @sexy_spex_givens {unquote(name), unquote(Macro.escape(block))}
+      @sexy_spex_givens unquote(name)
+
+      defp unquote(func_name)(var!(context)) do
+        _ = var!(context)
+        unquote(block)
+      end
     end
   end
 
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
+    givens = Module.get_attribute(env.module, :sexy_spex_givens) |> Enum.reverse() |> Enum.uniq()
+
+    call_clauses =
+      for name <- givens do
+        func_name = :"__sexy_spex_given_#{name}__"
+
+        quote do
+          def __call_given__(unquote(name), context) do
+            unquote(func_name)(context)
+          end
+        end
+      end
+
     quote do
       @doc false
-      def __givens__ do
-        @sexy_spex_givens
-        |> Enum.reverse()
-        |> Keyword.new(fn {name, block} -> {name, block} end)
-      end
+      def __givens__, do: unquote(givens)
+
+      unquote_splicing(call_clauses)
     end
   end
 end

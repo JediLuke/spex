@@ -30,7 +30,7 @@ defmodule SexySpex.DSL do
 
             when_ "viewing dashboard", context do
               # context.user and context.admin are available
-              :ok
+              {:ok, context}
             end
           end
         end
@@ -65,7 +65,7 @@ defmodule SexySpex.DSL do
   @doc """
   Registers a reusable given statement that can be invoked by atom.
 
-  The block should return `:ok` or `{:ok, context_updates}`.
+  The block must return `{:ok, context_updates}`.
   Context is available via the `context` variable.
 
   ## Examples
@@ -80,8 +80,15 @@ defmodule SexySpex.DSL do
       end
   """
   defmacro given(name, do: block) when is_atom(name) do
+    func_name = :"__sexy_spex_given_#{name}__"
+
     quote do
-      @sexy_spex_givens {unquote(name), unquote(Macro.escape(block))}
+      @sexy_spex_givens unquote(name)
+
+      defp unquote(func_name)(var!(context)) do
+        _ = var!(context)
+        unquote(block)
+      end
     end
   end
 
@@ -102,14 +109,25 @@ defmodule SexySpex.DSL do
   end
 
   @doc false
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
+    givens = Module.get_attribute(env.module, :sexy_spex_givens) |> Enum.reverse() |> Enum.uniq()
+
+    call_clauses =
+      for name <- givens do
+        func_name = :"__sexy_spex_given_#{name}__"
+
+        quote do
+          def __call_given__(unquote(name), context) do
+            unquote(func_name)(context)
+          end
+        end
+      end
+
     quote do
       @doc false
-      def __givens__ do
-        @sexy_spex_givens
-        |> Enum.reverse()
-        |> Keyword.new(fn {name, block} -> {name, block} end)
-      end
+      def __givens__, do: unquote(givens)
+
+      unquote_splicing(call_clauses)
 
       @doc false
       def __imported_givens_modules__ do
@@ -118,83 +136,6 @@ defmodule SexySpex.DSL do
           modules -> List.wrap(modules)
         end
       end
-    end
-  end
-
-  @doc false
-  def __execute_given__(module, name, context) do
-    givens = module.__givens__()
-
-    case Keyword.fetch(givens, name) do
-      {:ok, block} ->
-        execute_given_block(block, context)
-
-      :error ->
-        imported = module.__imported_givens_modules__()
-
-        result =
-          Enum.find_value(imported, fn mod ->
-            # Ensure the module is loaded before checking function_exported?
-            # This is needed because modules compiled during mix compile may not
-            # be loaded into the VM when running via mix spex
-            Code.ensure_loaded(mod)
-
-            if function_exported?(mod, :__givens__, 0) do
-              mod_givens = mod.__givens__()
-
-              case Keyword.fetch(mod_givens, name) do
-                {:ok, block} -> {:found, block}
-                :error -> nil
-              end
-            end
-          end)
-
-        case result do
-          {:found, block} ->
-            execute_given_block(block, context)
-
-          nil ->
-            raise ArgumentError, """
-            No given registered with name #{inspect(name)}.
-
-            Make sure you have defined it with:
-
-                given #{inspect(name)} do
-                  # setup code
-                  {:ok, %{key: value}}
-                end
-
-            Or imported it from another module with:
-
-                import_givens MyModule
-            """
-        end
-    end
-  end
-
-  defp execute_given_block(block, context) do
-    {result, _binding} = Code.eval_quoted(block, [context: context], __ENV__)
-    result
-  end
-
-  @doc false
-  # Process step result - extracted to function to avoid type inference warnings
-  def __process_step_result__(result, current_context) do
-    case result do
-      :ok ->
-        current_context
-      {:ok, %{} = new_context} ->
-        new_context
-      other ->
-        raise ArgumentError, """
-        Step must return :ok or {:ok, context}.
-        Got: #{inspect(other)}
-
-        Valid examples:
-          :ok                                    # Keep context unchanged
-          {:ok, context}                         # Return updated context
-          {:ok, Map.put(context, :key, value)}   # Return modified context
-        """
     end
   end
 
@@ -319,20 +260,21 @@ defmodule SexySpex.DSL do
   @doc """
   Defines the preconditions for a test scenario.
 
-  Steps must return `:ok` (keeps context unchanged) or `{:ok, context}` (updates context).
+  Steps receiving context must return `{:ok, context}` (bare `:ok` is not allowed).
+  Steps without context just run their block and pass context through unchanged.
 
   ## Examples
 
       # Using a registered given (atom)
       given_ :logged_in_user
 
-      # Without context - just run setup code
+      # Without context - just run setup code (context passes through unchanged)
       given_ "some setup" do
         # setup code that doesn't need context
         :ok
       end
 
-      # With context - return {:ok, updated_context}
+      # With context - must return {:ok, context}
       given_ "some setup", context do
         data = setup()
         {:ok, Map.put(context, :data, data)}
@@ -344,19 +286,35 @@ defmodule SexySpex.DSL do
 
       var!(spex_context) =
         SexySpex.StepExecutor.execute_step("Given", unquote(name), var!(spex_context), fn context ->
-          result = SexySpex.DSL.__execute_given__(__MODULE__, unquote(name), context)
+          result = SexySpex.Runtime.execute_given(__MODULE__, unquote(name), context)
 
           case result do
-            :ok ->
-              context
-
             {:ok, %{} = new_context} ->
               # Merge new context into existing context
               Map.merge(context, new_context)
 
+            :ok ->
+              raise ArgumentError, """
+              Given #{inspect(unquote(name))} returned :ok, but atom-based givens must return {:ok, %{...}}.
+
+              Change:
+
+                  given #{inspect(unquote(name))} do
+                    ...
+                    :ok
+                  end
+
+              To:
+
+                  given #{inspect(unquote(name))} do
+                    ...
+                    {:ok, %{}}
+                  end
+              """
+
             other ->
               raise ArgumentError, """
-              Given #{inspect(unquote(name))} must return :ok or {:ok, context}.
+              Given #{inspect(unquote(name))} must return {:ok, %{...}}.
               Got: #{inspect(other)}
               """
           end
@@ -368,9 +326,15 @@ defmodule SexySpex.DSL do
     quote do
       SexySpex.Reporter.step("Given", unquote(description))
 
-      SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
-        unquote(block)
-      end)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "Given",
+        unquote(description),
+        var!(spex_context),
+        fn spex_ctx ->
+          unquote(block)
+          spex_ctx
+        end
+      )
     end
   end
 
@@ -383,7 +347,7 @@ defmodule SexySpex.DSL do
         unquote(description),
         var!(spex_context),
         fn unquote(context_var) ->
-          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
+          SexySpex.Runtime.process_context_step_result("Given", unquote(description), unquote(block))
         end
       )
     end
@@ -396,9 +360,15 @@ defmodule SexySpex.DSL do
     quote do
       SexySpex.Reporter.step("When", unquote(description))
 
-      SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
-        unquote(block)
-      end)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "When",
+        unquote(description),
+        var!(spex_context),
+        fn spex_ctx ->
+          unquote(block)
+          spex_ctx
+        end
+      )
     end
   end
 
@@ -411,7 +381,7 @@ defmodule SexySpex.DSL do
         unquote(description),
         var!(spex_context),
         fn unquote(context_var) ->
-          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
+          SexySpex.Runtime.process_context_step_result("When", unquote(description), unquote(block))
         end
       )
     end
@@ -439,7 +409,7 @@ defmodule SexySpex.DSL do
         unquote(description),
         var!(spex_context),
         fn unquote(context_var) ->
-          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
+          SexySpex.Runtime.process_step_result(unquote(block), unquote(context_var))
         end
       )
     end
@@ -452,9 +422,15 @@ defmodule SexySpex.DSL do
     quote do
       SexySpex.Reporter.step("And", unquote(description))
 
-      SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
-        unquote(block)
-      end)
+      var!(spex_context) = SexySpex.StepExecutor.execute_step(
+        "And",
+        unquote(description),
+        var!(spex_context),
+        fn spex_ctx ->
+          unquote(block)
+          spex_ctx
+        end
+      )
     end
   end
 
@@ -467,7 +443,7 @@ defmodule SexySpex.DSL do
         unquote(description),
         var!(spex_context),
         fn unquote(context_var) ->
-          SexySpex.DSL.__process_step_result__(unquote(block), unquote(context_var))
+          SexySpex.Runtime.process_context_step_result("And", unquote(description), unquote(block))
         end
       )
     end

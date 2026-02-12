@@ -125,7 +125,7 @@ defmodule SexySpex do
           scenario "application connectivity" do
             given_ "application is running", context do
               assert SexySpex.Helpers.application_running?(:my_gui_app)
-              :ok
+              {:ok, context}
             end
 
             then_ "we can connect to MCP server", context do

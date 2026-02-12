@@ -2,7 +2,7 @@ defmodule SexySpex.GivensErrorSpex do
   use SexySpex
 
   given :returns_ok do
-    :ok
+    {:ok, %{}}
   end
 
   given :returns_ok_with_data do

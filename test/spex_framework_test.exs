@@ -81,7 +81,7 @@ defmodule SexySpex.FrameworkTest do
         # Verify setup_all data is available
         assert context.shared_data == "available_to_all"
         assert context.app_name == "spex_test"
-        :ok
+        {:ok, context}
       end
 
       when_ "setup has run for this spex", context do
@@ -89,7 +89,7 @@ defmodule SexySpex.FrameworkTest do
         assert Map.has_key?(context, :test_run_time)
         time_diff = DateTime.diff(DateTime.utc_now(), context.test_run_time)
         assert time_diff < 5  # Should be very recent
-        :ok
+        {:ok, context}
       end
 
       then_ "both contexts are merged correctly", context do
