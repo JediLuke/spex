@@ -19,7 +19,7 @@ defmodule SexySpex.StepExecutor do
 
     * `step_type` - The type of step ("Given", "When", "Then", "And")
     * `description` - Human-readable description of the step
-    * `step_function` - The function to execute for this step
+    * `step_function` - The function to execute for this step (arity 0)
 
   ## Configuration
 
@@ -36,6 +36,26 @@ defmodule SexySpex.StepExecutor do
       execute_manual_step(step_type, description, step_function)
     else
       execute_timed_step(step_type, description, step_function)
+    end
+  end
+
+  @doc """
+  Executes a step with context passed as argument (like ExUnit setup).
+
+  ## Parameters
+
+    * `step_type` - The type of step ("Given", "When", "Then", "And")
+    * `description` - Human-readable description of the step
+    * `context` - Current context map
+    * `step_function` - Function that receives context and returns updated context
+  """
+  def execute_step(step_type, description, context, step_function) do
+    manual_mode = Application.get_env(:sexy_spex, :manual_mode, false)
+
+    if manual_mode do
+      execute_manual_step_with_context(step_type, description, context, step_function)
+    else
+      execute_timed_step_with_context(step_type, description, context, step_function)
     end
   end
 
@@ -67,6 +87,31 @@ defmodule SexySpex.StepExecutor do
 
     # Execute the step
     step_function.()
+  end
+
+  # Executes a step in manual mode with context passed as argument.
+  defp execute_manual_step_with_context(step_type, description, context, step_function) do
+    IO.puts("")
+    IO.puts("  🎯 NEXT STEP: #{step_type} #{description}")
+
+    case prompt_manual_action() do
+      :continue ->
+        IO.puts("  ▶️  Executing step...")
+        result = step_function.(context)
+        IO.puts("  ✅ Step completed")
+        result
+
+      :quit ->
+        IO.puts("  ❌ Quitting manual mode...")
+        System.halt(0)
+    end
+  end
+
+  # Executes a step with context and timing delays.
+  defp execute_timed_step_with_context(step_type, description, context, step_function) do
+    apply_step_delay()
+    show_step_info(step_type, description)
+    step_function.(context)
   end
 
   # Prompts the user for the next action in manual mode.

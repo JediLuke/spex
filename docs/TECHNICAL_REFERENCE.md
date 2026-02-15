@@ -200,10 +200,82 @@ This design allows spex tests to be excluded by default (since they may require 
   - **Parameters:** `name` (string), `opts` (keyword list)
   - **Options:** `:description`, `:tags`, `:context`
 - `scenario/2` - Define a test scenario within a spex
+- `given_/1` - Execute a registered given by atom (see Reusable Givens below)
 - `given_/2` - Set up preconditions  
 - `when_/2` - Define the action being tested
 - `then_/2` - Define expected outcomes
 - `and_/2` - Additional context or cleanup steps
+- `given/2` - Register a reusable given statement at module level
+- `import_givens/1` - Import givens from another module
+
+##### Reusable Givens
+
+**Registering givens at module level:**
+```elixir
+defmodule MySpex do
+  use SexySpex
+
+  # Register a given that returns new context data
+  given :logged_in_user do
+    {:ok, %{user: %{id: 1, name: "Test"}}}
+  end
+
+  # Register a given that modifies existing context
+  given :with_admin_role do
+    {:ok, Map.put(context, :role, :admin)}
+  end
+
+  # Register a given that doesn't change context
+  given :reset_database do
+    MyApp.Repo.delete_all(MyApp.User)
+    :ok
+  end
+end
+```
+
+**Using registered givens:**
+```elixir
+scenario "example" do
+  given_ :logged_in_user      # Executes registered given, merges result into context
+  given_ :with_admin_role     # Can access context.user from previous given
+  given_ :reset_database      # Returns :ok, context unchanged
+end
+```
+
+**Return value behavior:**
+- `:ok` - Context passes through unchanged
+- `{:ok, %{key: value}}` - Map is **merged** into existing context
+- Any other value - Raises `ArgumentError`
+
+##### `SexySpex.Givens`
+**Module for creating shared given libraries**
+
+Use this to create a centralized repository of givens that can be imported into multiple spex files:
+
+```elixir
+# Define shared givens
+defmodule MyApp.SharedGivens do
+  use SexySpex.Givens
+
+  given :test_user do
+    {:ok, %{user: %{id: 1}}}
+  end
+end
+
+# Import in spex files
+defmodule MyApp.SomeSpex do
+  use SexySpex
+  import_givens MyApp.SharedGivens
+
+  spex "..." do
+    scenario "..." do
+      given_ :test_user  # From SharedGivens
+    end
+  end
+end
+```
+
+**Lookup order:** Local givens take precedence over imported givens.
 
 **Note on Step Types:** The `given_`, `when_`, `then_`, and `and_` macros are functionally identical - they all execute code blocks and report their step type to the reporter. The only difference is the label in the output (e.g., "Given: ...", "When: ...", etc.). The naming follows BDD conventions for readability, but you can technically use them in any order. Each macro simply:
 1. Reports the step type and description to `SexySpex.Reporter`

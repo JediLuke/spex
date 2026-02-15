@@ -51,7 +51,7 @@ defmodule MyApp.UserRegistrationSpex do
     description: "Validates the user registration flow",
     tags: [:user_management, :registration] do
     
-    scenario "with valid data", context do
+    scenario "with valid data" do
       given_ "valid user registration data", context do
         user_data = %{
           email: "test@example.com",
@@ -129,7 +129,7 @@ defmodule MyGUI.LoginSpex do
   end
 
   spex "user can login via GUI", context do
-    scenario "successful login flow", context do
+    scenario "successful login flow" do
       given_ "the application is running", context do
         assert SexySpex.Helpers.application_running?(:my_gui_app)
         assert SexySpex.Helpers.can_connect_to_scenic_mcp?(context.port)

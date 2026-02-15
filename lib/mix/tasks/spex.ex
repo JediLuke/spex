@@ -26,6 +26,10 @@ defmodule Mix.Tasks.Spex do
       --manual        Interactive manual mode - step through each action
       --speed         Execution speed: fast (default), medium, slow
       --trace         Enable ExUnit trace mode (shows test execution details)
+      --formatter     ExUnit formatter module (default: ExUnit.CLIFormatter)
+                      Can be specified multiple times
+      --quiet         Suppress spex Reporter output, show only ExUnit results
+      --jsonl [PATH]  Output failures as JSONL (default: spex_failures.jsonl)
 
   ## Examples
 
@@ -77,14 +81,17 @@ defmodule Mix.Tasks.Spex do
     # Ensure we're running in test environment for spex
     # Note: This task should have preferred_cli_env set to :test in mix.exs
     # of projects using spex to ensure proper compilation
-    
+
     # Compile the project to ensure test environment modules are loaded
     Mix.Task.run("compile")
-    
+
     # Start the application like mix test does
     # This ensures all applications and their dependencies are started
     Mix.Task.run("app.start")
-    
+
+    # Pre-process args to handle --jsonl without value (convert to --jsonl=default)
+    args = preprocess_jsonl_arg(args)
+
     {opts, files, _} = OptionParser.parse(args,
       switches: [
         only_spex: :boolean,
@@ -94,14 +101,20 @@ defmodule Mix.Tasks.Spex do
         help: :boolean,
         manual: :boolean,
         speed: :string,
-        trace: :boolean
+        trace: :boolean,
+        formatter: :keep,
+        quiet: :boolean,
+        jsonl: :string
       ],
       aliases: [
         h: :help,
         v: :verbose,
         m: :manual,
         s: :speed,
-        t: :trace
+        t: :trace,
+        f: :formatter,
+        q: :quiet,
+        j: :jsonl
       ]
     )
 
@@ -124,13 +137,46 @@ defmodule Mix.Tasks.Spex do
     # Configure spex execution
     configure_spex_mode(opts)
 
-    Mix.shell().info("🎯 Running #{length(spex_files)} spex file(s)...")
+    unless opts[:quiet] do
+      Mix.shell().info("Running #{length(spex_files)} spex file(s)...")
+    end
 
     # Run spex tests with ExUnit
     run_tests_with_exunit(spex_files, opts)
   end
 
   defp return, do: :ok
+
+  # Handle --jsonl without a value: if the next arg looks like a file, don't consume it
+  defp preprocess_jsonl_arg(args) do
+    preprocess_jsonl_arg(args, [])
+  end
+
+  defp preprocess_jsonl_arg([], acc), do: Enum.reverse(acc)
+
+  defp preprocess_jsonl_arg(["--jsonl" | rest], acc) do
+    case rest do
+      [next | remaining] when is_binary(next) ->
+        # If next arg starts with - or ends with .exs, treat --jsonl as having default value
+        if String.starts_with?(next, "-") or String.ends_with?(next, ".exs") do
+          preprocess_jsonl_arg(rest, ["--jsonl=spex_failures.jsonl" | acc])
+        else
+          # Next arg is the jsonl path, skip it
+          preprocess_jsonl_arg(remaining, ["--jsonl=#{next}" | acc])
+        end
+      [] ->
+        # --jsonl at end with no value
+        Enum.reverse(["--jsonl=spex_failures.jsonl" | acc])
+    end
+  end
+
+  defp preprocess_jsonl_arg(["-j" | rest], acc) do
+    preprocess_jsonl_arg(["--jsonl" | rest], acc)
+  end
+
+  defp preprocess_jsonl_arg([arg | rest], acc) do
+    preprocess_jsonl_arg(rest, [arg | acc])
+  end
 
   defp find_spex_files([], opts) do
     # No specific files provided, use pattern
@@ -144,41 +190,82 @@ defmodule Mix.Tasks.Spex do
   end
 
   defp configure_spex_mode(opts) do
+    # Set quiet mode if requested
+    if opts[:quiet] do
+      Application.put_env(:sexy_spex, :quiet, true)
+    end
+
+    # Configure JSONL output if requested
+    if opts[:jsonl] do
+      Application.put_env(:sexy_spex, :jsonl_enabled, true)
+      path = if is_binary(opts[:jsonl]) and opts[:jsonl] != "true",
+        do: opts[:jsonl],
+        else: "spex_failures.jsonl"
+      Application.put_env(:sexy_spex, :jsonl_path, path)
+      # Clear file at start
+      File.write!(path, "")
+    end
+
     # Set manual mode if requested
     if opts[:manual] do
       Application.put_env(:sexy_spex, :manual_mode, true)
       Application.put_env(:sexy_spex, :step_delay, 0)
-      Mix.shell().info("🎮 Manual mode enabled - you'll be prompted at each step")
+      unless opts[:quiet], do: Mix.shell().info("Manual mode enabled - you'll be prompted at each step")
     else
       # Configure speed if provided
-      configure_speed(opts[:speed])
+      configure_speed(opts[:speed], opts[:quiet])
     end
   end
 
-  defp configure_speed(nil), do: configure_speed("fast")  # Default to fast
-  defp configure_speed("fast") do
+  defp configure_speed(nil, quiet), do: configure_speed("fast", quiet)
+  defp configure_speed("fast", _quiet) do
     Application.put_env(:sexy_spex, :step_delay, 0)
   end
-  defp configure_speed("medium") do
-    Application.put_env(:sexy_spex, :step_delay, 1000)  # 1 second
-    Mix.shell().info("⏱️  Medium speed mode - 1s delays between steps")
+  defp configure_speed("medium", quiet) do
+    Application.put_env(:sexy_spex, :step_delay, 1000)
+    unless quiet, do: Mix.shell().info("Medium speed mode - 1s delays between steps")
   end
-  defp configure_speed("slow") do
-    Application.put_env(:sexy_spex, :step_delay, 2500)  # 2.5 seconds
-    Mix.shell().info("🐌 Slow speed mode - 2.5s delays between steps")
+  defp configure_speed("slow", quiet) do
+    Application.put_env(:sexy_spex, :step_delay, 2500)
+    unless quiet, do: Mix.shell().info("Slow speed mode - 2.5s delays between steps")
   end
-  defp configure_speed(invalid) do
+  defp configure_speed(invalid, _quiet) do
     Mix.shell().error("Invalid speed: #{invalid}. Valid options: fast, medium, slow")
     System.halt(1)
+  end
+
+  defp parse_formatters(opts) do
+    formatters =
+      opts
+      |> Keyword.get_values(:formatter)
+      |> Enum.map(&parse_formatter_module/1)
+
+    if Enum.empty?(formatters) do
+      [ExUnit.CLIFormatter]
+    else
+      formatters
+    end
+  end
+
+  defp parse_formatter_module(name) do
+    module = Module.concat([name])
+
+    unless Code.ensure_loaded?(module) do
+      Mix.shell().error("Could not load formatter module: #{name}")
+      System.halt(1)
+    end
+
+    module
   end
 
   defp run_tests_with_exunit(spex_files, opts) do
     # Configure ExUnit
     timeout = opts[:timeout] || @default_timeout
+    formatters = parse_formatters(opts)
 
     exunit_config = [
       colors: [enabled: true],
-      formatters: [ExUnit.CLIFormatter],
+      formatters: formatters,
       timeout: timeout
     ]
 
@@ -217,18 +304,21 @@ defmodule Mix.Tasks.Spex do
     result = ExUnit.run()
 
     # Handle results and exit immediately to prevent double runs
+    quiet = Application.get_env(:sexy_spex, :quiet, false)
+
     case result do
       %{failures: 0} ->
-        Mix.shell().info("✅ All spex passed!")
-        System.halt(0)  # Exit immediately after success
+        unless quiet, do: Mix.shell().info("All spex passed!")
+        System.halt(0)
 
       %{failures: failures} when failures > 0 ->
-        Mix.shell().error("❌ #{failures} spex failed")
+        unless quiet, do: Mix.shell().error("#{failures} spex failed")
         System.halt(1)
 
       _ ->
-        Mix.shell().error("❌ Spex execution encountered errors")
+        unless quiet, do: Mix.shell().error("Spex execution encountered errors")
         System.halt(1)
     end
   end
+
 end
