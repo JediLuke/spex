@@ -173,21 +173,26 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Given", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
+        # Handle return values: :ok, {:ok, context}, {:error, reason}, or a map
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
-            new_context  # Use new context
-          other -> 
+          {:ok, %{} = new_context} ->
+            new_context  # Use new context from ok tuple
+          {:error, reason} ->
+            raise ExUnit.AssertionError, message: "Step failed with error: #{inspect(reason)}"
+          %{} = new_context ->
+            new_context  # Use new context directly
+          other ->
             raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
+            Step must return :ok, {:ok, context}, {:error, reason}, or a context map.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
-              {:ok, Map.put(context, :key, value)}   # Return modified context
+              {:ok, context}                         # Return updated context
+              Map.put(context, :key, value)          # Return modified context directly
+              {:error, reason}                       # Fail the step with an error
             """
         end
       end)
@@ -214,21 +219,26 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("When", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
+        # Handle return values: :ok, {:ok, context}, {:error, reason}, or a map
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
-            new_context  # Use new context
-          other -> 
+          {:ok, %{} = new_context} ->
+            new_context  # Use new context from ok tuple
+          {:error, reason} ->
+            raise ExUnit.AssertionError, message: "Step failed with error: #{inspect(reason)}"
+          %{} = new_context ->
+            new_context  # Use new context directly
+          other ->
             raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
+            Step must return :ok, {:ok, context}, {:error, reason}, or a context map.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
-              {:ok, Map.put(context, :key, value)}   # Return modified context
+              {:ok, context}                         # Return updated context
+              Map.put(context, :key, value)          # Return modified context directly
+              {:error, reason}                       # Fail the step with an error
             """
         end
       end)
@@ -255,21 +265,26 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("Then", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
+        # Handle return values: :ok, {:ok, context}, {:error, reason}, or a map
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
-            new_context  # Use new context
-          other -> 
+          {:ok, %{} = new_context} ->
+            new_context  # Use new context from ok tuple
+          {:error, reason} ->
+            raise ExUnit.AssertionError, message: "Step failed with error: #{inspect(reason)}"
+          %{} = new_context ->
+            new_context  # Use new context directly
+          other ->
             raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
+            Step must return :ok, {:ok, context}, {:error, reason}, or a context map.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
-              {:ok, Map.put(context, :key, value)}   # Return modified context
+              {:ok, context}                         # Return updated context
+              Map.put(context, :key, value)          # Return modified context directly
+              {:error, reason}                       # Fail the step with an error
             """
         end
       end)
@@ -296,21 +311,26 @@ defmodule SexySpex.DSL do
       var!(unquote(context_var)) = SexySpex.StepExecutor.execute_step("And", unquote(description), fn ->
         var!(unquote(context_var)) = var!(unquote(context_var))
         result = unquote(block)
-        # Require explicit return values: :ok or {:ok, context}
+        # Handle return values: :ok, {:ok, context}, {:error, reason}, or a map
         case result do
-          :ok -> 
+          :ok ->
             var!(unquote(context_var))  # Keep context unchanged
-          {:ok, %{} = new_context} -> 
-            new_context  # Use new context
-          other -> 
+          {:ok, %{} = new_context} ->
+            new_context  # Use new context from ok tuple
+          {:error, reason} ->
+            raise ExUnit.AssertionError, message: "Step failed with error: #{inspect(reason)}"
+          %{} = new_context ->
+            new_context  # Use new context directly
+          other ->
             raise ArgumentError, """
-            Step must return :ok or {:ok, context}.
+            Step must return :ok, {:ok, context}, {:error, reason}, or a context map.
             Got: #{inspect(other)}
-            
+
             Valid examples:
               :ok                                    # Keep context unchanged
-              {:ok, context}                         # Return updated context  
-              {:ok, Map.put(context, :key, value)}   # Return modified context
+              {:ok, context}                         # Return updated context
+              Map.put(context, :key, value)          # Return modified context directly
+              {:error, reason}                       # Fail the step with an error
             """
         end
       end)
