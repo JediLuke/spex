@@ -257,6 +257,29 @@ defmodule SexySpex.DSL do
     end
   end
 
+  defmacro scenario(name, context_var, do: block) do
+    quote do
+      SexySpex.Reporter.start_scenario(unquote(name))
+
+      try do
+        var!(spex_context) = case var!(exunit_context) do
+          ctx when is_map(ctx) -> ctx
+          ctx when is_list(ctx) -> Map.new(ctx)
+          _ -> %{}
+        end
+        # Bind the user's context variable to spex_context
+        unquote(context_var) = var!(spex_context)
+        unquote(block)
+        _ = var!(spex_context)
+        SexySpex.Reporter.scenario_passed(unquote(name))
+      rescue
+        error ->
+          SexySpex.Reporter.scenario_failed(unquote(name), error, __STACKTRACE__)
+          reraise error, __STACKTRACE__
+      end
+    end
+  end
+
   @doc """
   Defines the preconditions for a test scenario.
 
