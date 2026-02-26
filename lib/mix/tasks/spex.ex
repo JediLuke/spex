@@ -259,37 +259,41 @@ defmodule Mix.Tasks.Spex do
   end
 
   defp run_tests_with_exunit(spex_files, opts) do
-    # Configure ExUnit
+    opts
+    |> build_exunit_config()
+    |> ExUnit.start()
+
+    load_spex_files(spex_files, opts)
+
+    ExUnit.run()
+    |> handle_results()
+  end
+
+  defp build_exunit_config(opts) do
     timeout = opts[:timeout] || @default_timeout
     formatters = parse_formatters(opts)
 
-    exunit_config = [
+    config = [
       colors: [enabled: true],
       formatters: formatters,
       timeout: timeout
     ]
 
-    # Note: Spex files can only be run via 'mix spex' command
-    # This ensures proper compilation and application lifecycle management
+    config
+    |> maybe_enable_trace(opts[:verbose])
+    |> maybe_enable_trace(opts[:trace])
+  end
 
-    # Enable verbose output if requested
-    exunit_config = if opts[:verbose] do
-      Keyword.put(exunit_config, :trace, true)
-    else
-      exunit_config
-    end
+  defp maybe_enable_trace(config, true), do: Keyword.put(config, :trace, true)
+  defp maybe_enable_trace(config, _), do: config
 
-    # Enable trace mode if requested (can be used independently of verbose)
-    exunit_config = if opts[:trace] do
-      Keyword.put(exunit_config, :trace, true)
-    else
-      exunit_config
-    end
+  # When the :spex compiler (from client_utils) already compiled these files,
+  # suppress "redefining module" warnings — we still need Code.require_file
+  # so modules register with ExUnit.
+  defp load_spex_files(spex_files, _opts) do
+    already_compiled = spex_already_compiled?()
+    if already_compiled, do: Code.put_compiler_option(:ignore_module_conflict, true)
 
-    # Start ExUnit
-    ExUnit.start(exunit_config)
-
-    # Load spex files
     Enum.each(spex_files, fn file ->
       try do
         Code.require_file(file)
@@ -300,10 +304,14 @@ defmodule Mix.Tasks.Spex do
       end
     end)
 
-    # Run the tests
-    result = ExUnit.run()
+    if already_compiled, do: Code.put_compiler_option(:ignore_module_conflict, false)
+  end
 
-    # Handle results and exit immediately to prevent double runs
+  defp spex_already_compiled? do
+    :persistent_term.get({Mix.Tasks.Compile.Spex, :diagnostics}, nil) != nil
+  end
+
+  defp handle_results(result) do
     quiet = Application.get_env(:sexy_spex, :quiet, false)
 
     case result do
