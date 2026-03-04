@@ -32,12 +32,18 @@ defmodule SexySpex.MixProject do
 
   defp deps do
     [
+      # JSON encoding for JSONL output
+      {:jason, "~> 1.4"},
+
+      # Boundary enforcement - ensures spex tests only use public interfaces
+      {:boundary, "~> 0.10", runtime: false},
+
       # Documentation
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      
+
       # Testing
       {:excoveralls, "~> 0.10", only: :test},
-      
+
       # Code quality
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
@@ -71,11 +77,13 @@ defmodule SexySpex.MixProject do
       source_ref: "v#{@version}",
       extras: [
         "README.md",
+        "docs/BOUNDARY_ENFORCEMENT.md": [title: "Boundary Enforcement"],
         "CHANGELOG.md": [title: "Changelog"]
       ],
       groups_for_modules: [
         "Core": [SexySpex, SexySpex.DSL, SexySpex.Helpers, SexySpex.Reporter, SexySpex.StepExecutor],
-        "Mix Tasks": [Mix.Tasks.Spex]
+        "Mix Tasks": [Mix.Tasks.Spex],
+        "Compilers": [Mix.Tasks.Compile.Spex]
       ]
     ]
   end
