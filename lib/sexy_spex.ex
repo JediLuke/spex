@@ -87,18 +87,22 @@ defmodule SexySpex do
 
         spex "user registration works" do
           scenario "successful registration" do
-            given_ "valid user data" do
+            given_ "valid user data", context do
               user_data = %{email: "test@example.com", password: "secure123"}
               assert valid_user_data?(user_data)
+              {:ok, Map.put(context, :user_data, user_data)}
             end
 
-            when_ "user registers" do
-              {:ok, user} = MyApp.register_user(user_data)
+            when_ "user registers", context do
+              {:ok, user} = MyApp.register_user(context.user_data)
               assert user.email == "test@example.com"
+              {:ok, Map.put(context, :user, user)}
             end
 
-            then_ "user can login" do
-              assert {:ok, _session} = MyApp.authenticate(user_data.email, user_data.password)
+            then_ "user can login", context do
+              assert {:ok, _session} =
+                       MyApp.authenticate(context.user_data.email, context.user_data.password)
+              {:ok, context}
             end
           end
         end
@@ -130,7 +134,7 @@ defmodule SexySpex do
 
             then_ "we can connect to MCP server", context do
               assert SexySpex.Helpers.can_connect_to_scenic_mcp?(context.port)
-              :ok
+              {:ok, context}
             end
           end
         end
@@ -203,12 +207,6 @@ defmodule SexySpex do
       use ExUnit.Case, async: false
       import SexySpex.DSL
       require Logger
-
-      # Register module attributes for givens
-      Module.register_attribute(__MODULE__, :sexy_spex_givens, accumulate: true)
-      Module.register_attribute(__MODULE__, :sexy_spex_imported_givens, accumulate: false)
-
-      @before_compile SexySpex.DSL
 
       @spex_opts unquote(opts)
     end

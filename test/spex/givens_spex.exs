@@ -1,16 +1,15 @@
 defmodule SexySpex.GivensSpex do
   use SexySpex
 
-  # Define reusable givens at module level
-  given :test_user do
-    {:ok, %{user: %{name: "Test User", email: "test@example.com"}}}
+  register_given :test_user, context do
+    {:ok, Map.put(context, :user, %{name: "Test User", email: "test@example.com"})}
   end
 
-  given :with_timestamp do
+  register_given :with_timestamp, context do
     {:ok, Map.put(context, :timestamp, DateTime.utc_now())}
   end
 
-  given :admin_role do
+  register_given :admin_role, context do
     {:ok, Map.put(context, :role, :admin)}
   end
 
@@ -21,7 +20,7 @@ defmodule SexySpex.GivensSpex do
       then_ "context has user", context do
         assert context.user.name == "Test User"
         assert context.user.email == "test@example.com"
-        :ok
+        {:ok, context}
       end
     end
 
@@ -34,7 +33,7 @@ defmodule SexySpex.GivensSpex do
         assert context.user.name == "Test User"
         assert context.timestamp != nil
         assert context.role == :admin
-        :ok
+        {:ok, context}
       end
     end
 
@@ -48,7 +47,7 @@ defmodule SexySpex.GivensSpex do
       then_ "both are available", context do
         assert context.user.name == "Test User"
         assert context.extra == "inline data"
-        :ok
+        {:ok, context}
       end
     end
   end

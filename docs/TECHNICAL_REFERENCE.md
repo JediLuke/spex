@@ -22,17 +22,17 @@ defmodule Calculator.BasicSpex do
   
   spex "calculator can add numbers" do
     scenario "adding two positive numbers" do
-      given_ "two numbers" do
-        a = 5
-        b = 3
+      given_ "two numbers", context do
+        {:ok, Map.merge(context, %{a: 5, b: 3})}
       end
-      
-      when_ "we add them" do
-        result = Calculator.add(a, b)
+
+      when_ "we add them", context do
+        {:ok, Map.put(context, :result, Calculator.add(context.a, context.b))}
       end
-      
-      then_ "we get the sum" do
-        assert result == 8
+
+      then_ "we get the sum", context do
+        assert context.result == 8
+        {:ok, context}
       end
     end
   end
@@ -55,17 +55,20 @@ Step-by-step guide for testing Scenic applications...
 ```elixir
 spex "file save functionality" do
   scenario "save to new file" do
-    given_ "unsaved content" do
+    given_ "unsaved content", context do
       ScenicMCP.send_text("My document content")
+      {:ok, context}
     end
-    
-    when_ "user saves with Ctrl+S" do
+
+    when_ "user saves with Ctrl+S", context do
       ScenicMCP.send_key("s", [:ctrl])
       # Handle save dialog...
+      {:ok, context}
     end
-    
-    then_ "file is saved successfully" do
+
+    then_ "file is saved successfully", context do
       # Verification logic...
+      {:ok, context}
     end
   end
 end
@@ -75,17 +78,20 @@ end
 ```elixir
 spex "UI updates correctly" do
   scenario "theme change" do
-    given "light theme is active" do
+    given_ "light theme is active", context do
       {:ok, before} = ScenicMCP.take_screenshot("light_theme")
+      {:ok, Map.put(context, :before, before)}
     end
-    
-    when_ "user switches to dark theme" do
+
+    when_ "user switches to dark theme", context do
       ScenicMCP.send_key("t", ["ctrl", "shift"])  # Toggle theme
+      {:ok, context}
     end
-    
-    then_ "UI changes to dark theme" do
-      {:ok, after} = ScenicMCP.take_screenshot("dark_theme")
+
+    then_ "UI changes to dark theme", context do
+      {:ok, dark} = ScenicMCP.take_screenshot("dark_theme")
       # Could add image comparison here
+      {:ok, Map.put(context, :after, dark)}
     end
   end
 end
@@ -198,96 +204,84 @@ This design allows spex tests to be excluded by default (since they may require 
 
 - `spex/2` - Define a specification
   - **Parameters:** `name` (string), `opts` (keyword list)
-  - **Options:** `:description`, `:tags`, `:context`
+  - **Options:** `:description`, `:tags`, `:context`, `:fail_on_error_logs`
 - `scenario/2` - Define a test scenario within a spex
 - `given_/1` - Execute a registered given by atom (see Reusable Givens below)
-- `given_/2` - Set up preconditions  
-- `when_/2` - Define the action being tested
-- `then_/2` - Define expected outcomes
-- `and_/2` - Additional context or cleanup steps
-- `given/2` - Register a reusable given statement at module level
-- `import_givens/1` - Import givens from another module
+- `given_/3` - Inline precondition: `given_ "desc", context do … end`
+- `when_/3` - Action: `when_ "desc", context do … end`
+- `then_/3` - Outcome: `then_ "desc", context do … end`
+- `and_/3` - Additional step: `and_ "desc", context do … end`
+- `register_given/3` - Register a reusable given by name
+
+**Step return contract (all forms):** every step block must return `{:ok, context}`. Bare `:ok` is not allowed. There is no map-merge or pass-through magic — the value returned becomes the next step's context. If a step doesn't change context, return `{:ok, context}` explicitly.
 
 ##### Reusable Givens
 
-**Registering givens at module level:**
+**Registering givens:**
 ```elixir
 defmodule MySpex do
   use SexySpex
 
-  # Register a given that returns new context data
-  given :logged_in_user do
-    {:ok, %{user: %{id: 1, name: "Test"}}}
+  register_given :logged_in_user, context do
+    user = %{id: 1, name: "Test"}
+    {:ok, Map.put(context, :user, user)}
   end
 
-  # Register a given that modifies existing context
-  given :with_admin_role do
+  register_given :with_admin_role, context do
     {:ok, Map.put(context, :role, :admin)}
   end
 
-  # Register a given that doesn't change context
-  given :reset_database do
+  register_given :reset_database, context do
     MyApp.Repo.delete_all(MyApp.User)
-    :ok
+    {:ok, context}
   end
 end
 ```
+
+`register_given` compiles each given to a public function `def name(context)`, so they can be called from the same module or any module that imports it.
 
 **Using registered givens:**
 ```elixir
 scenario "example" do
-  given_ :logged_in_user      # Executes registered given, merges result into context
-  given_ :with_admin_role     # Can access context.user from previous given
-  given_ :reset_database      # Returns :ok, context unchanged
+  given_ :logged_in_user
+  given_ :with_admin_role
+  given_ :reset_database
 end
 ```
-
-**Return value behavior:**
-- `:ok` - Context passes through unchanged
-- `{:ok, %{key: value}}` - Map is **merged** into existing context
-- Any other value - Raises `ArgumentError`
 
 ##### `SexySpex.Givens`
 **Module for creating shared given libraries**
 
-Use this to create a centralized repository of givens that can be imported into multiple spex files:
+Use `SexySpex.Givens` for modules that only define reusable givens (no spex/scenario macros pulled in). Consume them via plain Elixir `import`:
 
 ```elixir
-# Define shared givens
 defmodule MyApp.SharedGivens do
   use SexySpex.Givens
 
-  given :test_user do
-    {:ok, %{user: %{id: 1}}}
+  register_given :test_user, context do
+    {:ok, Map.put(context, :user, %{id: 1})}
   end
 end
 
-# Import in spex files
 defmodule MyApp.SomeSpex do
   use SexySpex
-  import_givens MyApp.SharedGivens
+  import MyApp.SharedGivens
 
   spex "..." do
     scenario "..." do
-      given_ :test_user  # From SharedGivens
+      given_ :test_user
     end
   end
 end
 ```
 
-**Lookup order:** Local givens take precedence over imported givens.
+**Lookup order:** Local definitions shadow imports — same as any Elixir function call.
 
-**Note on Step Types:** The `given_`, `when_`, `then_`, and `and_` macros are functionally identical - they all execute code blocks and report their step type to the reporter. The only difference is the label in the output (e.g., "Given: ...", "When: ...", etc.). The naming follows BDD conventions for readability, but you can technically use them in any order. Each macro simply:
+**Note on Step Types:** `given_`, `when_`, `then_`, and `and_` are functionally identical — they only differ in the label written by the reporter. Each macro:
 1. Reports the step type and description to `SexySpex.Reporter`
-2. Executes the provided code block via `SexySpex.StepExecutor`
-3. Continues to the next step
-
-**Context Handling:** When using the 2-arity versions (with context), steps must return:
-- `:ok` - Keep context unchanged
-- `{:ok, context}` - Pass updated context to next step
-- Any other return value raises `ArgumentError` with helpful guidance
-
-This design keeps the implementation simple while providing semantic structure for test scenarios and preventing accidental context loss.
+2. Executes the block (via `SexySpex.StepExecutor` for manual/timed modes)
+3. Validates the return value via `SexySpex.Runtime.process_step_result/2`
+4. Threads the returned context into the next step
 
 ##### Manual Mode and Step Control
 
@@ -296,25 +290,28 @@ This design keeps the implementation simple while providing semantic structure f
 **Execution Flow:**
 ```elixir
 scenario "example flow" do
-  given_ "setup" do
+  given_ "setup", context do
     # All code here executes without pause
     line1()
     line2()
     line3()
+    {:ok, context}
   end
   # PAUSE HAPPENS HERE in manual mode
-  
-  when_ "action" do
+
+  when_ "action", context do
     # All code here executes without pause
     action1()
     action2()
+    {:ok, context}
   end
   # PAUSE HAPPENS HERE in manual mode
-  
-  then_ "verification" do
+
+  then_ "verification", context do
     # All code here executes without pause
     assert1()
     assert2()
+    {:ok, context}
   end
 end
 ```
@@ -322,25 +319,29 @@ end
 **For Fine-Grained Control:** Break actions into smaller DSL blocks:
 ```elixir
 # Instead of:
-when_ "complex user interaction" do
+when_ "complex user interaction", context do
   send_text("Hello")      # No pause
-  send_key("backspace")   # No pause  
+  send_key("backspace")   # No pause
   send_text(" World")     # No pause
+  {:ok, context}
 end
 
 # Use multiple blocks:
-when_ "user types Hello" do
+when_ "user types Hello", context do
   send_text("Hello")
+  {:ok, context}
 end
 # Pause here
 
-and_ "user corrects text" do
+and_ "user corrects text", context do
   send_key("backspace")
+  {:ok, context}
 end
 # Pause here
 
-and_ "user completes with World" do
+and_ "user completes with World", context do
   send_text(" World")
+  {:ok, context}
 end
 ```
 

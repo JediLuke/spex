@@ -41,36 +41,37 @@ defmodule SexySpex.FrameworkTest do
         assert context.initial_value == 10
         assert context.computed_value == 20
         assert Map.has_key?(context, :test_run_time)
-        :ok
+        {:ok, context}
       end
     end
   end
 
   spex "Framework modules are properly loaded" do
     scenario "essential modules are available" do
-      given_ "the framework is loaded" do
-        # Test that core modules exist
+      given_ "the framework is loaded", context do
         assert Code.ensure_loaded?(SexySpex.DSL)
         assert Code.ensure_loaded?(SexySpex.Helpers)
         assert Code.ensure_loaded?(Mix.Tasks.Spex)
+        {:ok, context}
       end
 
-      when_ "we check DSL macros" do
-        # Test that DSL macros are defined
+      when_ "we check DSL macros", context do
         macros = SexySpex.DSL.__info__(:macros)
         assert Keyword.has_key?(macros, :spex)
         assert Keyword.has_key?(macros, :scenario)
         assert Keyword.has_key?(macros, :given_)
         assert Keyword.has_key?(macros, :when_)
         assert Keyword.has_key?(macros, :then_)
+        assert Keyword.has_key?(macros, :register_given)
+        {:ok, context}
       end
 
-      then_ "helper functions are available" do
-        # Test that helper functions exist
+      then_ "helper functions are available", context do
         helpers = SexySpex.Helpers.__info__(:functions)
         assert Keyword.has_key?(helpers, :start_scenic_app)
         assert Keyword.has_key?(helpers, :can_connect_to_scenic_mcp?)
         assert Keyword.has_key?(helpers, :application_running?)
+        {:ok, context}
       end
     end
   end
@@ -96,7 +97,7 @@ defmodule SexySpex.FrameworkTest do
         # Verify we have both setup_all and setup data
         assert context.shared_data == "available_to_all"  # from setup_all
         assert Map.has_key?(context, :test_run_time)      # from setup
-        :ok
+        {:ok, context}
       end
     end
   end
@@ -127,7 +128,7 @@ defmodule SexySpex.FrameworkTest do
         assert context.step1_value == 999  # Modified by step2
         assert context.step2_value == 200
         assert context.when_value == 300
-        :ok
+        {:ok, context}
       end
     end
 
@@ -142,15 +143,15 @@ defmodule SexySpex.FrameworkTest do
         local_context = Map.put(context, :local_mod, true)
         assert local_context.baseline == "original"
         assert local_context.local_mod == true
-        # Return unchanged - the local_mod should NOT leak
-        :ok
+        # Return unchanged — the local_mod should NOT leak
+        {:ok, context}
       end
 
       then_ "previous step's local modifications don't leak", context do
         # local_mod from previous then_ should not be present
         refute Map.has_key?(context, :local_mod)
         assert context.baseline == "original"
-        :ok
+        {:ok, context}
       end
     end
   end
