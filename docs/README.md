@@ -5,8 +5,9 @@ This directory contains comprehensive documentation for the Spex framework.
 ## Documentation Structure
 
 - **[Getting Started Guide](GETTING_STARTED.md)** - New to Spex? Start here with installation, basic concepts, and your first spex
-- **[How-To Guide](HOW_TO_GUIDE.md)** - Problem-solving for specific tasks and common workflows  
+- **[How-To Guide](HOW_TO_GUIDE.md)** - Problem-solving for specific tasks and common workflows
 - **[Technical Reference](TECHNICAL_REFERENCE.md)** - Complete API documentation and configuration options
+- **[Boundary Enforcement](BOUNDARY_ENFORCEMENT.md)** - Enforce black-box testing with compile-time boundary checks
 - **[Troubleshooting](TROUBLESHOOTING.md)** - Solutions for common problems and debugging strategies
 - **[Spex by Example](SPEX_BY_EXAMPLE.md)** - Real-world examples and patterns
 
