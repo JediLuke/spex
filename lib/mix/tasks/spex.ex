@@ -26,6 +26,7 @@ defmodule Mix.Tasks.Spex do
       --manual        Interactive manual mode - step through each action
       --speed         Execution speed: fast (default), medium, slow
       --trace         Enable ExUnit trace mode (shows test execution details)
+      --slowest N     Print timing information for the N slowest tests
       --formatter     ExUnit formatter module (default: ExUnit.CLIFormatter)
                       Can be specified multiple times
       --jsonl [PATH]  Output failures as JSONL (default: spex_failures.jsonl)
@@ -43,6 +44,7 @@ defmodule Mix.Tasks.Spex do
       mix spex --speed medium --verbose  # Medium speed with detailed output
       mix spex --trace            # Show detailed test execution
       mix spex test/spex/file.exs --trace
+      mix spex --slowest 5        # Show timing for 5 slowest tests
 
   ## Configuration
 
@@ -105,6 +107,7 @@ defmodule Mix.Tasks.Spex do
         manual: :boolean,
         speed: :string,
         trace: :boolean,
+        slowest: :integer,
         formatter: :keep,
         jsonl: :string,
         stale: :boolean,
@@ -319,10 +322,16 @@ defmodule Mix.Tasks.Spex do
     config
     |> maybe_enable_trace(opts[:verbose])
     |> maybe_enable_trace(opts[:trace])
+    |> maybe_set_slowest(opts[:slowest])
   end
 
   defp maybe_enable_trace(config, true), do: Keyword.put(config, :trace, true)
   defp maybe_enable_trace(config, _), do: config
+
+  defp maybe_set_slowest(config, n) when is_integer(n) and n > 0,
+    do: Keyword.put(config, :slowest, n)
+
+  defp maybe_set_slowest(config, _), do: config
 
   # When the :spex compiler (from client_utils) already compiled these files,
   # suppress "redefining module" warnings — we still need Code.require_file
