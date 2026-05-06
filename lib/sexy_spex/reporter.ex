@@ -5,10 +5,10 @@ defmodule SexySpex.Reporter do
   Provides a clean interface for tracking spex execution progress and
   generating human-readable output.
 
-  ## Quiet Mode
+  ## Quiet Mode (Default)
 
-  Set `config :sexy_spex, quiet: true` or use `--quiet` flag to disable
-  all Reporter output and get clean ExUnit output only.
+  Reporter output is suppressed by default. Use `--verbose` flag to enable
+  detailed Reporter output alongside ExUnit results.
 
   ## JSONL Output
 
@@ -19,7 +19,7 @@ defmodule SexySpex.Reporter do
   @state_key :sexy_spex_reporter_state
 
   defp quiet? do
-    Application.get_env(:sexy_spex, :quiet, false)
+    Application.get_env(:sexy_spex, :quiet, true)
   end
 
   defp jsonl_enabled? do

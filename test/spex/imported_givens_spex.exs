@@ -1,23 +1,23 @@
 # Load the shared givens module first
 Code.require_file("shared_givens.ex", __DIR__)
 
-defmodule SexySpex.ImportGivensSpex do
+defmodule SexySpex.ImportedGivensSpex do
   use SexySpex
-  import_givens SexySpex.TestSharedGivens
+  import SexySpex.TestSharedGivens
 
-  # Also define a local given
-  given :local_data do
-    {:ok, %{local: "from this module"}}
+  # Also register a local given
+  register_given :local_data, context do
+    {:ok, Map.put(context, :local, "from this module")}
   end
 
-  spex "Imported givens work" do
+  spex "Givens imported from another module work" do
     scenario "can use imported given" do
       given_ :shared_user
 
       then_ "context has shared user", context do
         assert context.shared_user.name == "Shared User"
         assert context.shared_user.source == :shared_module
-        :ok
+        {:ok, context}
       end
     end
 
@@ -30,7 +30,7 @@ defmodule SexySpex.ImportGivensSpex do
         assert context.shared_user.source == :shared_module
         assert context.config.env == :test
         assert context.local == "from this module"
-        :ok
+        {:ok, context}
       end
     end
   end

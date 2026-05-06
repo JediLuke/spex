@@ -344,8 +344,9 @@ Start simple and build up:
 # 1. Basic connectivity test
 spex "Connectivity check" do
   scenario "Can connect" do
-    given "app should be running" do
+    given_ "app should be running", context do
       assert ScenicMCP.app_running?()
+      {:ok, context}
     end
   end
 end
@@ -353,8 +354,9 @@ end
 # 2. Add screenshot test
 spex "Screenshot test" do
   scenario "Can take screenshot" do
-    when_ "taking screenshot" do
+    when_ "taking screenshot", context do
       {:ok, _} = ScenicMCP.take_screenshot("test")
+      {:ok, context}
     end
   end
 end
@@ -362,8 +364,9 @@ end
 # 3. Add basic interaction
 spex "Basic interaction" do
   scenario "Can send text" do
-    when_ "sending text" do
+    when_ "sending text", context do
       {:ok, _} = ScenicMCP.send_text("test")
+      {:ok, context}
     end
   end
 end
@@ -375,21 +378,24 @@ Add detailed logging to understand flow:
 
 ```elixir
 scenario "Debug scenario" do
-  given "setup" do
+  given_ "setup", context do
     IO.puts("DEBUG: Starting scenario")
     {:ok, _} = ScenicMCP.take_screenshot("debug_start")
+    {:ok, context}
   end
-  
-  when_ "action" do
+
+  when_ "action", context do
     IO.puts("DEBUG: About to send text")
     {:ok, result} = ScenicMCP.send_text("test")
     IO.inspect(result, label: "DEBUG: Send text result")
+    {:ok, context}
   end
-  
-  then_ "verification" do
+
+  then_ "verification", context do
     IO.puts("DEBUG: Verifying result")
     {:ok, viewport} = ScenicMCP.inspect_viewport()
     IO.inspect(viewport, label: "DEBUG: Viewport state")
+    {:ok, context}
   end
 end
 ```

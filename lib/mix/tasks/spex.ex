@@ -21,27 +21,30 @@ defmodule Mix.Tasks.Spex do
   ## Options
 
       --pattern       File pattern to match (default: test/spex/**/*_spex.exs)
-      --verbose       Show detailed output
+      --verbose       Show detailed spex Reporter output (quiet by default)
       --timeout       Test timeout in milliseconds (default: 60000)
       --manual        Interactive manual mode - step through each action
       --speed         Execution speed: fast (default), medium, slow
       --trace         Enable ExUnit trace mode (shows test execution details)
+      --slowest N     Print timing information for the N slowest tests
       --formatter     ExUnit formatter module (default: ExUnit.CLIFormatter)
                       Can be specified multiple times
-      --quiet         Suppress spex Reporter output, show only ExUnit results
       --jsonl [PATH]  Output failures as JSONL (default: spex_failures.jsonl)
+      --stale         Only run spex files that have changed or reference changed modules
+      --force         Force all spex files to run (use with --stale to reset)
 
   ## Examples
 
       mix spex
       mix spex test/spex/user_login_spex.exs
       mix spex --pattern "**/integration_*_spex.exs"
-      mix spex --only-spex --verbose
+      mix spex --verbose
       mix spex --manual           # Interactive step-by-step mode
       mix spex --speed slow       # Slower automatic execution
       mix spex --speed medium --verbose  # Medium speed with detailed output
       mix spex --trace            # Show detailed test execution
       mix spex test/spex/file.exs --trace
+      mix spex --slowest 5        # Show timing for 5 slowest tests
 
   ## Configuration
 
@@ -74,6 +77,8 @@ defmodule Mix.Tasks.Spex do
 
   use Mix.Task
 
+  alias Mix.Compilers.Test, as: CT
+
   @default_pattern "test/spex/**/*_spex.exs"
   @default_timeout 60_000
 
@@ -102,9 +107,11 @@ defmodule Mix.Tasks.Spex do
         manual: :boolean,
         speed: :string,
         trace: :boolean,
+        slowest: :integer,
         formatter: :keep,
-        quiet: :boolean,
-        jsonl: :string
+        jsonl: :string,
+        stale: :boolean,
+        force: :boolean
       ],
       aliases: [
         h: :help,
@@ -113,7 +120,6 @@ defmodule Mix.Tasks.Spex do
         s: :speed,
         t: :trace,
         f: :formatter,
-        q: :quiet,
         j: :jsonl
       ]
     )
@@ -137,7 +143,7 @@ defmodule Mix.Tasks.Spex do
     # Configure spex execution
     configure_spex_mode(opts)
 
-    unless opts[:quiet] do
+    if opts[:verbose] do
       Mix.shell().info("Running #{length(spex_files)} spex file(s)...")
     end
 
@@ -190,8 +196,8 @@ defmodule Mix.Tasks.Spex do
   end
 
   defp configure_spex_mode(opts) do
-    # Set quiet mode if requested
-    if opts[:quiet] do
+    # Quiet by default; verbose opts in
+    unless opts[:verbose] do
       Application.put_env(:sexy_spex, :quiet, true)
     end
 
@@ -210,26 +216,26 @@ defmodule Mix.Tasks.Spex do
     if opts[:manual] do
       Application.put_env(:sexy_spex, :manual_mode, true)
       Application.put_env(:sexy_spex, :step_delay, 0)
-      unless opts[:quiet], do: Mix.shell().info("Manual mode enabled - you'll be prompted at each step")
+      if opts[:verbose], do: Mix.shell().info("Manual mode enabled - you'll be prompted at each step")
     else
       # Configure speed if provided
-      configure_speed(opts[:speed], opts[:quiet])
+      configure_speed(opts[:speed], opts[:verbose])
     end
   end
 
-  defp configure_speed(nil, quiet), do: configure_speed("fast", quiet)
-  defp configure_speed("fast", _quiet) do
+  defp configure_speed(nil, verbose), do: configure_speed("fast", verbose)
+  defp configure_speed("fast", _verbose) do
     Application.put_env(:sexy_spex, :step_delay, 0)
   end
-  defp configure_speed("medium", quiet) do
+  defp configure_speed("medium", verbose) do
     Application.put_env(:sexy_spex, :step_delay, 1000)
-    unless quiet, do: Mix.shell().info("Medium speed mode - 1s delays between steps")
+    if verbose, do: Mix.shell().info("Medium speed mode - 1s delays between steps")
   end
-  defp configure_speed("slow", quiet) do
+  defp configure_speed("slow", verbose) do
     Application.put_env(:sexy_spex, :step_delay, 2500)
-    unless quiet, do: Mix.shell().info("Slow speed mode - 2.5s delays between steps")
+    if verbose, do: Mix.shell().info("Slow speed mode - 2.5s delays between steps")
   end
-  defp configure_speed(invalid, _quiet) do
+  defp configure_speed(invalid, _verbose) do
     Mix.shell().error("Invalid speed: #{invalid}. Valid options: fast, medium, slow")
     System.halt(1)
   end
@@ -259,37 +265,81 @@ defmodule Mix.Tasks.Spex do
   end
 
   defp run_tests_with_exunit(spex_files, opts) do
-    # Configure ExUnit
+    if opts[:stale] do
+      run_with_stale_tracking(spex_files, opts)
+    else
+      run_without_stale_tracking(spex_files, opts)
+    end
+  end
+
+  defp run_without_stale_tracking(spex_files, opts) do
+    opts
+    |> build_exunit_config()
+    |> ExUnit.start()
+
+    load_spex_files(spex_files, opts)
+
+    ExUnit.run()
+    |> handle_results()
+  end
+
+  defp run_with_stale_tracking(spex_files, opts) do
+    exunit_config = build_exunit_config(opts)
+    ExUnit.start(exunit_config)
+
+    test_paths = spex_test_paths()
+    test_elixirc_options = Mix.Project.config()[:test_elixirc_options] || []
+
+    case CT.require_and_run(spex_files, test_paths, test_elixirc_options, opts) do
+      {:ok, results} ->
+        handle_results(results)
+
+      :noop ->
+        if opts[:verbose] do
+          Mix.shell().info("No stale spex files")
+        end
+
+        System.halt(0)
+    end
+  end
+
+  defp spex_test_paths do
+    # Return the directory containing spex files so the stale manifest
+    # can find test_helper.exs (falls back gracefully if not present)
+    ["test/spex"]
+  end
+
+  defp build_exunit_config(opts) do
     timeout = opts[:timeout] || @default_timeout
     formatters = parse_formatters(opts)
 
-    exunit_config = [
+    config = [
       colors: [enabled: true],
       formatters: formatters,
       timeout: timeout
     ]
 
-    # Note: Spex files can only be run via 'mix spex' command
-    # This ensures proper compilation and application lifecycle management
+    config
+    |> maybe_enable_trace(opts[:verbose])
+    |> maybe_enable_trace(opts[:trace])
+    |> maybe_set_slowest(opts[:slowest])
+  end
 
-    # Enable verbose output if requested
-    exunit_config = if opts[:verbose] do
-      Keyword.put(exunit_config, :trace, true)
-    else
-      exunit_config
-    end
+  defp maybe_enable_trace(config, true), do: Keyword.put(config, :trace, true)
+  defp maybe_enable_trace(config, _), do: config
 
-    # Enable trace mode if requested (can be used independently of verbose)
-    exunit_config = if opts[:trace] do
-      Keyword.put(exunit_config, :trace, true)
-    else
-      exunit_config
-    end
+  defp maybe_set_slowest(config, n) when is_integer(n) and n > 0,
+    do: Keyword.put(config, :slowest, n)
 
-    # Start ExUnit
-    ExUnit.start(exunit_config)
+  defp maybe_set_slowest(config, _), do: config
 
-    # Load spex files
+  # When the :spex compiler (from client_utils) already compiled these files,
+  # suppress "redefining module" warnings — we still need Code.require_file
+  # so modules register with ExUnit.
+  defp load_spex_files(spex_files, _opts) do
+    already_compiled = spex_already_compiled?()
+    if already_compiled, do: Code.put_compiler_option(:ignore_module_conflict, true)
+
     Enum.each(spex_files, fn file ->
       try do
         Code.require_file(file)
@@ -300,23 +350,27 @@ defmodule Mix.Tasks.Spex do
       end
     end)
 
-    # Run the tests
-    result = ExUnit.run()
+    if already_compiled, do: Code.put_compiler_option(:ignore_module_conflict, false)
+  end
 
-    # Handle results and exit immediately to prevent double runs
-    quiet = Application.get_env(:sexy_spex, :quiet, false)
+  defp spex_already_compiled? do
+    :persistent_term.get({Mix.Tasks.Compile.Spex, :diagnostics}, nil) != nil
+  end
+
+  defp handle_results(result) do
+    verbose = !Application.get_env(:sexy_spex, :quiet, true)
 
     case result do
       %{failures: 0} ->
-        unless quiet, do: Mix.shell().info("All spex passed!")
+        if verbose, do: Mix.shell().info("All spex passed!")
         System.halt(0)
 
       %{failures: failures} when failures > 0 ->
-        unless quiet, do: Mix.shell().error("#{failures} spex failed")
+        if verbose, do: Mix.shell().error("#{failures} spex failed")
         System.halt(1)
 
       _ ->
-        unless quiet, do: Mix.shell().error("Spex execution encountered errors")
+        if verbose, do: Mix.shell().error("Spex execution encountered errors")
         System.halt(1)
     end
   end

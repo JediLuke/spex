@@ -65,14 +65,16 @@ defmodule MyApp.SmokeTestSpex do
   
   spex "Application starts correctly" do
     alias SexySpex.Adapters.ScenicMCP
-    
+
     scenario "Basic connectivity" do
-      given "the application should be running" do
+      given_ "the application should be running", context do
         assert ScenicMCP.wait_for_app(9999, 10)
+        {:ok, context}
       end
-      
-      then_ "we can take a screenshot" do
+
+      then_ "we can take a screenshot", context do
         {:ok, _} = ScenicMCP.take_screenshot("smoke_test")
+        {:ok, context}
       end
     end
   end
@@ -149,15 +151,15 @@ spex "Test 1" do
 ```elixir
 # Good - single responsibility
 scenario "Text input works correctly" do
-  given "empty editor" do ... end
-  when_ "user types text" do ... end
-  then_ "text appears" do ... end
+  given_ "empty editor", context do ... ; {:ok, context} end
+  when_ "user types text", context do ... ; {:ok, context} end
+  then_ "text appears", context do ... ; {:ok, context} end
 end
 
 scenario "File saving works correctly" do
-  given "document with content" do ... end
-  when_ "user saves file" do ... end
-  then_ "file is saved" do ... end
+  given_ "document with content", context do ... ; {:ok, context} end
+  when_ "user saves file", context do ... ; {:ok, context} end
+  then_ "file is saved", context do ... ; {:ok, context} end
 end
 
 # Bad - doing too much
@@ -289,9 +291,7 @@ end
 
 Use context passing to share data between steps, similar to ExUnit's setup callbacks.
 
-**Important:** SexySpex requires explicit context handling. All steps with context must return either:
-- `:ok` - Keep the context unchanged
-- `{:ok, context}` - Pass an updated context to the next step
+**Important:** Every step with context must return `{:ok, context}`. There is no `:ok` shorthand — if a step doesn't change context, return `{:ok, context}` explicitly.
 
 ```elixir
 spex "User workflow with data sharing" do
@@ -300,13 +300,12 @@ spex "User workflow with data sharing" do
       document_name = "MyDocument_#{:rand.uniform(1000)}"
       ScenicMCP.send_text(document_name)
       ScenicMCP.send_key("enter")
-      
-      # Store data in context for later steps
-      updated_context = context
+
+      updated_context =
+        context
         |> Map.put(:document_name, document_name)
         |> Map.put(:creation_time, DateTime.utc_now())
-      
-      # Must explicitly return the updated context
+
       {:ok, updated_context}
     end
     
@@ -327,30 +326,30 @@ spex "User workflow with data sharing" do
       assert String.length(context.content) > 0
       
       {:ok, _} = ScenicMCP.take_screenshot("saved_#{context.document_name}")
-      
-      # No context changes needed, just return :ok
-      :ok
+
+      # No context changes — still must return {:ok, context}
+      {:ok, context}
     end
   end
 end
 ```
 
-**Without context (traditional approach):**
+**Without context (still flows context, just ignored):**
 ```elixir
 scenario "Simple workflow without data sharing" do
-  given_ "setup state" do
-    # Variables only exist within this block
-    setup_data = prepare_test()
+  given_ "setup state", context do
+    prepare_test()
+    {:ok, context}
   end
-  
-  when_ "action occurs" do
-    # Cannot access setup_data from previous step
+
+  when_ "action occurs", context do
     perform_action()
+    {:ok, context}
   end
-  
-  then_ "result is verified" do
-    # Must recreate or re-fetch any needed data
+
+  then_ "result is verified", context do
     verify_result()
+    {:ok, context}
   end
 end
 ```
@@ -363,23 +362,23 @@ end
 
 ### How do I handle context return values correctly?
 
-**Problem:** Getting `ArgumentError` about "Step must return :ok or {:ok, context}" when running spex.
+**Problem:** Getting `ArgumentError` about "Step must return {:ok, context}" when running spex.
 
 **Solution:**
 
-SexySpex enforces **explicit context handling** to prevent accidental context loss. Every step with context must return one of these values:
+Every step block — `given_`, `when_`, `then_`, `and_`, and registered givens — must return `{:ok, context}`. There is no implicit pass-through and no `:ok` shorthand. If a step doesn't change context, return `{:ok, context}` explicitly.
 
-#### ✅ Valid Return Values
+#### Valid Return Values
 
-**`:ok` - Keep context unchanged:**
+**Pass context through unchanged:**
 ```elixir
 given_ "application is running", context do
   assert MyApp.started?()
-  :ok  # Context passes through unchanged
+  {:ok, context}
 end
 ```
 
-**`{:ok, context}` - Update context:**
+**Update context:**
 ```elixir
 when_ "user creates a document", context do
   document = create_document("test.txt")
@@ -387,68 +386,73 @@ when_ "user creates a document", context do
 end
 ```
 
-**`{:ok, updated_context}` - Multiple updates:**
+**Multiple updates:**
 ```elixir
 given_ "test data is prepared", context do
   user = create_user()
   session = login(user)
-  
-  updated = context
+
+  updated =
+    context
     |> Map.put(:user, user)
     |> Map.put(:session, session)
     |> Map.put(:timestamp, DateTime.utc_now())
-  
+
   {:ok, updated}
 end
 ```
 
-#### ❌ Invalid Return Values (Will Raise Error)
+#### Invalid Return Values (Will Raise Error)
 
 ```elixir
-# These will ALL fail with ArgumentError:
+# All of these raise ArgumentError:
 
 given_ "bad example 1", context do
-  create_user()  # Returns %User{}, not :ok or {:ok, context}
+  create_user()  # returns %User{} — not {:ok, context}
 end
 
 when_ "bad example 2", context do
-  true  # Returns boolean, not valid format
+  true  # boolean
 end
 
 then_ "bad example 3", context do
-  Map.put(context, :key, "value")  # Returns map directly
+  Map.put(context, :key, "value")  # bare map
 end
 
 and_ "bad example 4", context do
-  {:error, "something went wrong"}  # Wrong tuple format
+  :ok  # bare :ok is not allowed — must be {:ok, context}
+end
+
+then_ "bad example 5", context do
+  {:error, "boom"}  # wrong tuple shape
 end
 ```
 
-#### 🔧 Migration Guide
+#### Migration from earlier versions
 
-**Old (implicit) style:**
-```elixir
-given_ "setup", context do
-  data = prepare_data()
-  Map.put(context, :data, data)  # ❌ This will now fail
-end
-```
+Earlier versions accepted bare `:ok` (which kept context unchanged) and atom-given returns of `{:ok, %{partial}}` (which were merged into context). Both behaviors are removed. Migration:
 
-**New (explicit) style:**
 ```elixir
-given_ "setup", context do
-  data = prepare_data()
-  {:ok, Map.put(context, :data, data)}  # ✅ Explicit return
-end
-```
-
-**For steps that don't modify context:**
-```elixir
+# Before:
 then_ "verify result", context do
   assert context.data.status == :ok
-  # Old: nothing returned (worked by accident)
-  # New: explicit :ok required
   :ok
+end
+
+# After:
+then_ "verify result", context do
+  assert context.data.status == :ok
+  {:ok, context}
+end
+
+# Before — atom givens returned partial map that got merged:
+register_given :admin_role, context do
+  {:ok, %{role: :admin}}
+end
+
+# After — return the full context explicitly:
+register_given :admin_role, context do
+  {:ok, Map.put(context, :role, :admin)}
 end
 ```
 
@@ -463,37 +467,41 @@ spex "Complete user onboarding workflow" do
   alias SexySpex.Adapters.ScenicMCP
   
   scenario "New user complete journey" do
-    given "application is at welcome screen" do
+    given_ "application is at welcome screen", context do
       {:ok, _} = ScenicMCP.take_screenshot("welcome_screen")
+      {:ok, context}
     end
-    
-    when_ "user starts registration process" do
+
+    when_ "user starts registration process", context do
       {:ok, _} = ScenicMCP.send_text("newuser@example.com")
       {:ok, _} = ScenicMCP.send_key("tab")
       {:ok, _} = ScenicMCP.send_text("SecurePassword123")
       {:ok, _} = ScenicMCP.send_key("enter")
       {:ok, _} = ScenicMCP.take_screenshot("registration_submitted")
+      {:ok, context}
     end
-    
-    and_ "completes profile setup" do
+
+    and_ "completes profile setup", context do
       {:ok, _} = ScenicMCP.send_text("John Doe")
       {:ok, _} = ScenicMCP.send_key("tab")
       {:ok, _} = ScenicMCP.send_text("Software Developer")
       {:ok, _} = ScenicMCP.send_key("enter")
       {:ok, _} = ScenicMCP.take_screenshot("profile_completed")
+      {:ok, context}
     end
-    
-    and_ "uses core application features" do
-      # Test main app functionality
+
+    and_ "uses core application features", context do
       {:ok, _} = ScenicMCP.send_text("My first document")
       {:ok, _} = ScenicMCP.send_key("s", [:ctrl])
       {:ok, _} = ScenicMCP.take_screenshot("document_saved")
+      {:ok, context}
     end
-    
-    then_ "user has successfully onboarded" do
+
+    then_ "user has successfully onboarded", context do
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       assert viewport.active
       {:ok, _} = ScenicMCP.take_screenshot("onboarding_complete")
+      {:ok, context}
     end
   end
 end
@@ -515,20 +523,23 @@ mix spex test/spex/failing_test_spex.exs --manual --verbose
 2. **Add diagnostic screenshots:**
 ```elixir
 scenario "Debug failing interaction" do
-  given "setup state" do
+  given_ "setup state", context do
     {:ok, _} = ScenicMCP.take_screenshot("debug_01_initial_state")
+    {:ok, context}
   end
-  
-  when_ "problematic action" do
+
+  when_ "problematic action", context do
     {:ok, _} = ScenicMCP.take_screenshot("debug_02_before_action")
     {:ok, _} = ScenicMCP.send_text("problematic text")
     {:ok, _} = ScenicMCP.take_screenshot("debug_03_after_action")
+    {:ok, context}
   end
-  
-  then_ "expected result" do
+
+  then_ "expected result", context do
     {:ok, viewport} = ScenicMCP.inspect_viewport()
     IO.inspect(viewport, label: "DEBUG VIEWPORT")
     {:ok, _} = ScenicMCP.take_screenshot("debug_04_final_state")
+    {:ok, context}
   end
 end
 ```
@@ -547,17 +558,19 @@ mix spex --watch --verbose
 
 ```elixir
 scenario "Handling async operations" do
-  when_ "triggering slow operation" do
+  when_ "triggering slow operation", context do
     {:ok, _} = ScenicMCP.send_key("f5")  # Refresh
-    
+
     # Wait for operation to complete
     Process.sleep(2000)
-    
+
     # Or retry until condition is met
     wait_for_condition(fn ->
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       viewport.active
     end, timeout: 10_000)
+
+    {:ok, context}
   end
 end
 
@@ -611,12 +624,14 @@ defp retry_action(action_fn, max_attempts, attempt) do
 end
 
 scenario "Reliable operation" do
-  when_ "performing unreliable action" do
+  when_ "performing unreliable action", context do
     retry_action(fn ->
       {:ok, _} = ScenicMCP.send_key("f12")
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       assert viewport.active
     end)
+
+    {:ok, context}
   end
 end
 ```
@@ -637,30 +652,29 @@ mix spex --timeout 300000  # 5 minutes
 ```elixir
 spex "Visual regression testing" do
   scenario "UI consistency check" do
-    given "application in known state" do
+    given_ "application in known state", context do
       reset_to_standard_state()
       {:ok, _} = ScenicMCP.take_screenshot("baseline_ui")
+      {:ok, context}
     end
-    
-    when_ "no changes should occur" do
-      # Perform actions that shouldn't change UI
+
+    when_ "no changes should occur", context do
       {:ok, _} = ScenicMCP.send_key("tab")
       {:ok, _} = ScenicMCP.send_key("tab")
+      {:ok, context}
     end
-    
-    then_ "UI remains identical" do
+
+    then_ "UI remains identical", context do
       {:ok, _} = ScenicMCP.take_screenshot("comparison_ui")
-      
-      # In practice, you'd use an image comparison library
+
       baseline_path = "test/screenshots/baseline_ui.png"
       comparison_path = "test/screenshots/comparison_ui.png"
-      
-      # For now, just verify files exist
+
       assert File.exists?(baseline_path)
       assert File.exists?(comparison_path)
-      
       # TODO: Implement actual image comparison
       # assert images_are_similar?(baseline_path, comparison_path)
+      {:ok, context}
     end
   end
 end
@@ -675,25 +689,27 @@ end
 ```elixir
 spex "Responsive layout testing" do
   scenario "UI adapts to different window sizes" do
-    given "application at standard size" do
+    given_ "application at standard size", context do
       {:ok, _} = ScenicMCP.take_screenshot("standard_size")
+      {:ok, context}
     end
-    
-    when_ "window is resized to mobile dimensions" do
-      # This would need MCP support for window resizing
+
+    when_ "window is resized to mobile dimensions", context do
       # {:ok, _} = ScenicMCP.resize_window(400, 600)
       {:ok, _} = ScenicMCP.take_screenshot("mobile_size")
+      {:ok, context}
     end
-    
-    and_ "window is resized to tablet dimensions" do
+
+    and_ "window is resized to tablet dimensions", context do
       # {:ok, _} = ScenicMCP.resize_window(768, 1024)
       {:ok, _} = ScenicMCP.take_screenshot("tablet_size")
+      {:ok, context}
     end
-    
-    then_ "layouts adapt appropriately" do
-      # Verify elements are still accessible and properly positioned
+
+    then_ "layouts adapt appropriately", context do
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       assert viewport.active
+      {:ok, context}
     end
   end
 end
@@ -802,16 +818,19 @@ defmodule MyApp.FeatureSpex do
   # Team convention: always take before/after screenshots
   spex "Feature description" do
     scenario "What it tests" do
-      given "starting state" do
+      given_ "starting state", context do
         {:ok, _} = ScenicMCP.take_screenshot("#{@scenario}_before")
+        {:ok, context}
       end
-      
-      when_ "action occurs" do
+
+      when_ "action occurs", context do
         # ... test actions
+        {:ok, context}
       end
-      
-      then_ "result is verified" do
+
+      then_ "result is verified", context do
         {:ok, _} = ScenicMCP.take_screenshot("#{@scenario}_after")
+        {:ok, context}
       end
     end
   end
@@ -824,48 +843,44 @@ end
 
 **Problem:** Same setup code is duplicated across multiple scenarios and spex files.
 
-**Solution: Use atom-based givens**
-
-SexySpex allows you to define reusable given statements at the module level and reference them by atom:
+**Solution: register givens by atom and invoke them with `given_ :name`**
 
 ```elixir
 defmodule MyApp.UserSpex do
   use SexySpex
 
-  # Define reusable givens at module level
-  given :logged_in_user do
+  register_given :logged_in_user, context do
     user = %{id: 1, name: "Test User", email: "test@example.com"}
-    {:ok, %{user: user}}
+    {:ok, Map.put(context, :user, user)}
   end
 
-  given :admin_privileges do
+  register_given :admin_privileges, context do
     {:ok, Map.put(context, :role, :admin)}
   end
 
-  given :empty_database do
+  register_given :empty_database, context do
     MyApp.Repo.delete_all(MyApp.User)
-    :ok
+    {:ok, context}
   end
 
   spex "User dashboard" do
     scenario "admin sees all users" do
-      # Reference givens by atom - context is passed automatically
       given_ :logged_in_user
       given_ :admin_privileges
 
       then_ "admin data is available", context do
         assert context.user.name == "Test User"
         assert context.role == :admin
-        :ok
+        {:ok, context}
       end
     end
 
     scenario "regular user view" do
-      given_ :logged_in_user  # Reuse the same given
+      given_ :logged_in_user
 
       then_ "user data is available", context do
         assert context.user != nil
-        :ok
+        {:ok, context}
       end
     end
   end
@@ -873,16 +888,16 @@ end
 ```
 
 **Key behaviors:**
-- Givens returning `{:ok, %{key: value}}` are **merged** into the existing context
-- Givens returning `:ok` keep the context unchanged
-- Givens can access the current context via the `context` variable
-- Multiple givens can be chained - each one builds on the previous context
+- `register_given :name, context do … end` compiles to `def name(context)` — a normal public function
+- The block must return `{:ok, context}` — the returned context replaces the current context (no merge)
+- `given_ :name` resolves `name/1` via standard Elixir scoping (local def first, then imports)
+- Multiple registered givens can be chained — each builds on the previous context
 
 ### How do I share givens across multiple spex files?
 
 **Problem:** Need the same setup code in different spex modules.
 
-**Solution: Create a shared givens module**
+**Solution: a `SexySpex.Givens` module + plain `import`**
 
 1. **Create a shared givens module:**
 ```elixir
@@ -890,78 +905,78 @@ end
 defmodule MyApp.SharedGivens do
   use SexySpex.Givens
 
-  given :logged_in_user do
-    {:ok, %{user: %{id: 1, name: "Test User"}}}
+  register_given :logged_in_user, context do
+    {:ok, Map.put(context, :user, %{id: 1, name: "Test User"})}
   end
 
-  given :with_test_data do
-    {:ok, %{
-      users: [%{id: 1}, %{id: 2}],
-      products: [%{id: 1, name: "Widget"}]
-    }}
+  register_given :with_test_data, context do
+    {:ok,
+     context
+     |> Map.put(:users, [%{id: 1}, %{id: 2}])
+     |> Map.put(:products, [%{id: 1, name: "Widget"}])}
   end
 
-  given :clean_state do
-    # Reset application state
+  register_given :clean_state, context do
     MyApp.reset_all()
-    :ok
+    {:ok, context}
   end
 end
 ```
 
-2. **Import in your spex files:**
+2. **Use them with a normal `import`:**
 ```elixir
 # test/spex/user_spex.exs
 Code.require_file("support/shared_givens.ex", __DIR__)
 
 defmodule MyApp.UserSpex do
   use SexySpex
-  import_givens MyApp.SharedGivens
+  import MyApp.SharedGivens
 
-  # You can also define local givens that override or extend shared ones
-  given :local_setup do
-    {:ok, %{local: true}}
+  register_given :local_setup, context do
+    {:ok, Map.put(context, :local, true)}
   end
 
   spex "User features" do
     scenario "with shared setup" do
-      given_ :logged_in_user    # From SharedGivens
-      given_ :with_test_data    # From SharedGivens
-      given_ :local_setup       # Local to this module
+      given_ :logged_in_user
+      given_ :with_test_data
+      given_ :local_setup
 
       then_ "all data available", context do
         assert context.user != nil
         assert context.users != nil
         assert context.local == true
-        :ok
+        {:ok, context}
       end
     end
   end
 end
 ```
 
-3. **Use in another spex file:**
+3. **Reuse in another spex file:**
 ```elixir
 # test/spex/product_spex.exs
 Code.require_file("support/shared_givens.ex", __DIR__)
 
 defmodule MyApp.ProductSpex do
   use SexySpex
-  import_givens MyApp.SharedGivens
+  import MyApp.SharedGivens
 
   spex "Product features" do
     scenario "with same shared setup" do
-      given_ :logged_in_user    # Same given, reused
+      given_ :logged_in_user
       given_ :with_test_data
 
       then_ "products available", context do
         assert length(context.products) > 0
-        :ok
+        {:ok, context}
       end
     end
   end
 end
 ```
+
+Local definitions shadow imports — the same way any imported function would. There's nothing spex-specific about the resolution.
 
 ### How do I mix atom givens with inline givens?
 
@@ -973,16 +988,14 @@ end
 defmodule MyApp.MixedSpex do
   use SexySpex
 
-  given :base_user do
-    {:ok, %{user: %{id: 1, name: "Test User"}}}
+  register_given :base_user, context do
+    {:ok, Map.put(context, :user, %{id: 1, name: "Test User"})}
   end
 
   spex "Mixed setup approaches" do
     scenario "combining reusable and inline" do
-      # Reusable given
       given_ :base_user
 
-      # Inline given for scenario-specific setup
       given_ "specific document for this test", context do
         doc = %{id: 42, title: "Test Doc", owner_id: context.user.id}
         {:ok, Map.put(context, :document, doc)}
@@ -991,7 +1004,7 @@ defmodule MyApp.MixedSpex do
       then_ "both are available", context do
         assert context.user.id == 1
         assert context.document.owner_id == context.user.id
-        :ok
+        {:ok, context}
       end
     end
   end
@@ -1011,20 +1024,23 @@ defmodule SharedScenarios do
     quote do
       scenario "User login process" do
         alias SexySpex.Adapters.ScenicMCP
-        
-        given "user is at login screen" do
+
+        given_ "user is at login screen", context do
           {:ok, _} = ScenicMCP.take_screenshot("login_screen")
+          {:ok, context}
         end
-        
-        when_ "user enters valid credentials" do
+
+        when_ "user enters valid credentials", context do
           {:ok, _} = ScenicMCP.send_text("user@example.com")
           {:ok, _} = ScenicMCP.send_key("tab")
           {:ok, _} = ScenicMCP.send_text("password123")
           {:ok, _} = ScenicMCP.send_key("enter")
+          {:ok, context}
         end
-        
-        then_ "user is logged in" do
+
+        then_ "user is logged in", context do
           {:ok, _} = ScenicMCP.take_screenshot("logged_in")
+          {:ok, context}
         end
       end
     end
@@ -1055,44 +1071,49 @@ end
 ```elixir
 spex "Error handling validation" do
   scenario "Invalid input handling" do
-    given "application in normal state" do
+    given_ "application in normal state", context do
       {:ok, _} = ScenicMCP.take_screenshot("normal_state")
+      {:ok, context}
     end
-    
-    when_ "invalid input is provided" do
-      # Test various invalid inputs
+
+    when_ "invalid input is provided", context do
       invalid_inputs = [
-        "\x00\x01\x02",          # Binary data
-        "A" <> String.duplicate("x", 10000),  # Extremely long text
-        "🚀" <> String.duplicate("💥", 100),  # Unicode stress test
+        "\x00\x01\x02",
+        "A" <> String.duplicate("x", 10000),
+        "🚀" <> String.duplicate("💥", 100)
       ]
-      
+
       Enum.each(invalid_inputs, fn input ->
         {:ok, _} = ScenicMCP.send_text(input)
         {:ok, _} = ScenicMCP.send_key("enter")
         Process.sleep(100)
       end)
+
+      {:ok, context}
     end
-    
-    then_ "application remains stable" do
+
+    then_ "application remains stable", context do
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       assert viewport.active, "App should handle invalid input gracefully"
       {:ok, _} = ScenicMCP.take_screenshot("after_invalid_input")
+      {:ok, context}
     end
   end
-  
+
   scenario "Memory pressure handling" do
-    when_ "application is stressed with rapid actions" do
-      # Rapid fire actions to test stability
+    when_ "application is stressed with rapid actions", context do
       for _i <- 1..100 do
         {:ok, _} = ScenicMCP.send_text("test")
         {:ok, _} = ScenicMCP.send_key("backspace")
       end
+
+      {:ok, context}
     end
-    
-    then_ "application maintains performance" do
+
+    then_ "application maintains performance", context do
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       assert viewport.active
+      {:ok, context}
     end
   end
 end
@@ -1107,23 +1128,24 @@ end
 ```elixir
 spex "Performance validation" do
   scenario "Response time under normal load" do
-    when_ "user performs common actions" do
+    when_ "user performs common actions", context do
       start_time = :os.system_time(:millisecond)
-      
+
       {:ok, _} = ScenicMCP.send_text("Performance test document")
       {:ok, _} = ScenicMCP.send_key("enter")
       {:ok, _} = ScenicMCP.send_key("s", [:ctrl])
-      
+
       end_time = :os.system_time(:millisecond)
-      @response_time = end_time - start_time
+      {:ok, Map.put(context, :response_time, end_time - start_time)}
     end
-    
-    then_ "actions complete within reasonable time" do
-      # Verify response time is acceptable
-      assert @response_time < 2000, "Actions took #{@response_time}ms, expected < 2000ms"
-      
+
+    then_ "actions complete within reasonable time", context do
+      assert context.response_time < 2000,
+             "Actions took #{context.response_time}ms, expected < 2000ms"
+
       {:ok, viewport} = ScenicMCP.inspect_viewport()
       assert viewport.active
+      {:ok, context}
     end
   end
 end

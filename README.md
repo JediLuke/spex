@@ -70,10 +70,10 @@ defmodule MyApp.UserRegistrationSpex do
 
       then_ "user account is created and can login", context do
         assert {:ok, _session} = MyApp.Auth.login(
-          context.user_data.email, 
+          context.user_data.email,
           context.user_data.password
         )
-        :ok
+        {:ok, context}
       end
     end
   end
@@ -128,26 +128,27 @@ defmodule MyGUI.LoginSpex do
     SexySpex.Helpers.start_scenic_app(:my_gui_app)
   end
 
-  spex "user can login via GUI", context do
+  spex "user can login via GUI" do
     scenario "successful login flow" do
       given_ "the application is running", context do
         assert SexySpex.Helpers.application_running?(:my_gui_app)
         assert SexySpex.Helpers.can_connect_to_scenic_mcp?(context.port)
+        {:ok, context}
       end
 
       when_ "user enters valid credentials", context do
-        # Use scenic_mcp tools for interaction
         ScenicMcp.send_keys(text: "user@example.com")
         ScenicMcp.send_keys(key: "tab")
         ScenicMcp.send_keys(text: "password123")
         ScenicMcp.send_keys(key: "enter")
+        {:ok, context}
       end
 
       then_ "user is logged in successfully", context do
-        # Take screenshot for verification
         ScenicMcp.take_screenshot(filename: "logged_in_dashboard")
         viewport_state = ScenicMcp.Probes.viewport_state()
         assert viewport_state.name == :main_viewport
+        {:ok, context}
       end
     end
   end
